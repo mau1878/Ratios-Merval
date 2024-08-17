@@ -37,10 +37,13 @@ if st.button('Obtener Datos y Graficar'):
         ratio = data[main_stock] / data[stock]
 
         if view_as_percentages:
+            # Convert reference_date to pandas.Timestamp
+            reference_date = pd.Timestamp(reference_date)
+
             # Find the nearest available date to the reference_date
             if reference_date not in ratio.index:
-                # Find the nearest date manually
-                closest_date = min(ratio.index, key=lambda d: abs(d - reference_date))
+                differences = abs(ratio.index - reference_date)
+                closest_date = ratio.index[differences.argmin()]
                 reference_date = closest_date
                 st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date.date()}")
 
