@@ -37,11 +37,12 @@ if st.button('Obtener Datos y Graficar'):
         ratio = data[main_stock] / data[stock]
 
         if view_as_percentages:
+            # Find the nearest available date to the reference_date
             if reference_date not in ratio.index:
-                # Find nearest date
-                nearest_date = ratio.index.get_loc(reference_date, method='nearest')
-                reference_date = ratio.index[nearest_date]
-                st.warning(f"La fecha de referencia {reference_date} ha sido ajustada a la fecha más cercana disponible.")
+                # Find the nearest date manually
+                closest_date = min(ratio.index, key=lambda d: abs(d - reference_date))
+                reference_date = closest_date
+                st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date.date()}")
 
             reference_value = ratio.loc[reference_date]
             ratio = (ratio / reference_value - 1) * 100
@@ -92,3 +93,4 @@ if st.button('Obtener Datos y Graficar'):
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
