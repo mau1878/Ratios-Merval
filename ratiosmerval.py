@@ -15,6 +15,15 @@ tickers = [
     "INTR.BA", "GARO.BA", "FIPL.BA", "GRIM.BA", "DYCA.BA", "POLL.BA", "DOME.BA", "ROSE.BA", "MTR.BA"
 ]
 
+# Helper function to find the most recent valid trading date
+def get_recent_valid_date(start_date, end_date):
+    while end_date.weekday() >= 5:  # Skip weekends
+        end_date -= pd.Timedelta(days=1)
+    
+    # You might need to adjust this function if you have a list of holidays
+    # For example, if you have a list of holidays, add a check to exclude them
+    return end_date
+
 # Streamlit UI
 st.title('Análisis de Ratios de Activos del MERVAL')
 
@@ -22,7 +31,11 @@ main_stock = st.selectbox('Seleccionar el ticker principal:', tickers)
 extra_stocks = st.multiselect('Seleccionar hasta 6 tickers adicionales:', tickers, default=tickers[1:7])
 start_date = st.date_input("Fecha de inicio", pd.to_datetime("2023-01-01"))
 end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"))
-reference_date = st.date_input("Fecha de referencia para visualizar como porcentajes:", pd.to_datetime("2023-06-01"))
+
+# Determine the most recent valid date for the reference date
+today = pd.to_datetime("today")
+most_recent_valid_date = get_recent_valid_date(start_date, today)
+reference_date = st.date_input("Fecha de referencia para visualizar como porcentajes:", most_recent_valid_date)
 
 # Checkbox to choose percentage view
 view_as_percentages = st.checkbox('Ver como porcentajes en vez de ratios')
@@ -96,4 +109,3 @@ if st.button('Obtener Datos y Graficar'):
     )
 
     st.plotly_chart(fig, use_container_width=True)
-
