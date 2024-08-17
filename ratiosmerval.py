@@ -3,66 +3,86 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-# Tickers list
+# Configuración de la aplicación Streamlit
+st.title("Análisis de Ratios entre Acciones")
+
+# Selección de las acciones
 tickers = [
-    "GGAL.BA", "YPFD.BA", "PAMP.BA", "TXAR.BA", "ALUA.BA", "CRES.BA", "SUPV.BA", "CEPU.BA", "BMA.BA", 
-    "TGSU2.BA", "TRAN.BA", "EDN.BA", "LOMA.BA", "MIRG.BA", "DGCU2.BA", "BBAR.BA", "MOLI.BA", "TGNO4.BA", 
-    "CGPA2.BA", "COME.BA", "IRSA.BA", "BYMA.BA", "TECO2.BA", "METR.BA", "CECO2.BA", "BHIP.BA", "AGRO.BA", 
-    "LEDE.BA", "CVH.BA", "HAVA.BA", "AUSO.BA", "VALO.BA", "SEMI.BA", "INVJ.BA", "CTIO.BA", "MORI.BA", 
-    "HARG.BA", "GCLA.BA", "SAMI.BA", "BOLT.BA", "MOLA.BA", "CAPX.BA", "OEST.BA", "LONG.BA", "GCDI.BA", 
-    "GBAN.BA", "CELU.BA", "FERR.BA", "CADO.BA", "GAMI.BA", "PATA.BA", "CARC.BA", "BPAT.BA", "RICH.BA", 
-    "INTR.BA", "GARO.BA", "FIPL.BA", "GRIM.BA", "DYCA.BA", "POLL.BA", "DOME.BA", "ROSE.BA", "MTR.BA"
+    'GGAL.BA', 'YPFD.BA', 'PAMP.BA', 'TXAR.BA', 'ALUA.BA', 'CRES.BA', 'SUPV.BA', 'CEPU.BA', 'BMA.BA', 'TGSU2.BA',
+    'TRAN.BA', 'EDN.BA', 'LOMA.BA', 'MIRG.BA', 'DGCU2.BA', 'BBAR.BA', 'MOLI.BA', 'TGNO4.BA', 'CGPA2.BA', 'COME.BA',
+    'IRSA.BA', 'BYMA.BA', 'TECO2.BA', 'METR.BA', 'CECO2.BA', 'BHIP.BA', 'AGRO.BA', 'LEDE.BA', 'CVH.BA', 'HAVA.BA',
+    'AUSO.BA', 'VALO.BA', 'SEMI.BA', 'INVJ.BA', 'CTIO.BA', 'MORI.BA', 'HARG.BA', 'GCLA.BA', 'SAMI.BA', 'BOLT.BA',
+    'MOLA.BA', 'CAPX.BA', 'OEST.BA', 'LONG.BA', 'GCDI.BA', 'GBAN.BA', 'CELU.BA', 'FERR.BA', 'CADO.BA', 'GAMI.BA',
+    'PATA.BA', 'CARC.BA', 'BPAT.BA', 'RICH.BA', 'INTR.BA', 'GARO.BA', 'FIPL.BA', 'GRIM.BA', 'DYCA.BA', 'POLL.BA',
+    'DOME.BA', 'ROSE.BA', 'MTR.BA'
 ]
 
-# Streamlit interface for inputs
-st.title('Análisis de Ratios entre Acciones')
+main_ticker = st.selectbox("Selecciona la acción principal para analizar:", tickers)
+extra_tickers = st.multiselect("Selecciona hasta 6 acciones adicionales:", tickers, max_selections=6)
 
-# User selects the main stock
-main_stock = st.selectbox("Seleccionar el ticker principal:", tickers)
+reference_date = st.date_input("Selecciona la fecha de referencia para ver porcentajes:", pd.to_datetime("2023-01-01"))
 
-# User selects up to 6 extra stocks
-extra_stocks = st.multiselect("Seleccionar hasta 6 tickers adicionales:", tickers, max_selections=6)
+# Opción de visualización
+visualize_as_percentages = st.checkbox("Visualizar como porcentajes respecto a la fecha de referencia")
 
-# Date range selection
-start_date = st.date_input("Fecha de inicio", pd.to_datetime("2023-01-01"))
-end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"))
-reference_date = st.date_input("Seleccionar fecha de referencia para porcentajes:", pd.to_datetime("2023-01-01"))
+if st.button('Realizar Análisis'):
+    if extra_tickers:
+        # Descargar los datos históricos
+        main_stock = yf.Ticker(main_ticker)
+        extra_stocks = [yf.Ticker(ticker) for ticker in extra_tickers]
 
-# User chooses to see ratios or percentages
-show_as_percentage = st.checkbox("Mostrar ratios como porcentaje de la fecha de referencia")
+        main_data = main_stock.history(period="1y")
+        extra_data = {ticker: stock.history(period="1y") for ticker, stock in zip(extra_tickers, extra_stocks)}
 
-# Fetch data and calculate ratios
-if st.button('Mostrar gráficos'):
-    if extra_stocks:
-        main_data = yf.download(main_stock, start=start_date, end=end_date)['Close']
+        # Calcular los ratios
+        ratios = pd.DataFrame(index=main_data.index)
+        for ticker in extra_tickers:
+            ratios[ticker] = main_data['Close'] / extra_data[ticker]['Close']
+
         fig = go.Figure()
 
-        for stock in extra_stocks:
-            extra_data = yf.download(stock, start=start_date, end=end_date)['Close']
-            ratio = main_data / extra_data
+        if visualize_as_percentages:
+            # Calcular los porcentajes en relación con la fecha de referencia
+            reference_value = ratios.loc[reference_date]
+            ratios_percent = (ratios / reference_value - 1) * 100
 
-            # Find the nearest available date to the selected reference date
-            nearest_date = ratio.index.get_indexer([pd.to_datetime(reference_date)], method='nearest')[0]
-            nearest_date = ratio.index[nearest_date]
+            for ticker in extra_tickers:
+                fig.add_trace(go.Scatter(
+                    x=ratios_percent.index,
+                    y=ratios_percent[ticker],
+                    mode='lines',
+                    name=f'{main_ticker}/{ticker}'
+                ))
 
-            if show_as_percentage:
-                reference_value = ratio.loc[nearest_date]
-                ratio = (ratio / reference_value) * 100
+            # Línea vertical amarilla en la fecha de referencia
+            fig.add_vline(x=reference_date, line=dict(color="yellow", dash="dash"), name="Fecha de Referencia")
+            # Línea horizontal roja en 0%
+            fig.add_hline(y=0, line=dict(color="red", dash="dash"), name="0%")
+        else:
+            for ticker in extra_tickers:
+                fig.add_trace(go.Scatter(
+                    x=ratios.index,
+                    y=ratios[ticker],
+                    mode='lines',
+                    name=f'{main_ticker}/{ticker}'
+                ))
+            # Línea horizontal en 1 en el eje Y
+            fig.add_hline(y=1, line=dict(color="red", dash="dash"), name="Ratio = 1")
 
-            fig.add_trace(go.Scatter(
-                x=ratio.index,
-                y=ratio,
-                mode='lines',
-                name=f'{main_stock}/{stock}'
-            ))
+        # Agregar líneas de cuadrícula suaves
+        fig.update_xaxes(showgrid=True, gridwidth=0.5, gridcolor='LightGrey')
+        fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='LightGrey')
 
+        # Configuración del diseño de la gráfica
         fig.update_layout(
-            title=f'Ratios de {main_stock} respecto a otros activos',
+            title=f'Análisis de Ratios: {main_ticker} contra otras acciones',
             xaxis_title='Fecha',
-            yaxis_title='Ratio' if not show_as_percentage else 'Porcentaje (%)',
+            yaxis_title='Ratio' if not visualize_as_percentages else 'Porcentaje (%)',
             xaxis_rangeslider_visible=False
         )
 
+        # Mostrar la gráfica en Streamlit
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.write("Por favor seleccione al menos un ticker adicional.")
+        st.write("Por favor, selecciona al menos una acción adicional para comparar.")
+
