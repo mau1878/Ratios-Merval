@@ -41,16 +41,20 @@ if st.button('Mostrar gráficos'):
             extra_data = yf.download(stock, start=start_date, end=end_date)['Close']
             ratio = main_data / extra_data
 
-            if show_as_percentage:
-                reference_value = ratio.loc[reference_date]
-                ratio = (ratio / reference_value) * 100
+            # Check if the reference date exists in the ratio data
+            if reference_date not in ratio.index:
+                st.error(f"La fecha de referencia {reference_date} no existe en los datos. Por favor, elija otra fecha.")
+            else:
+                if show_as_percentage:
+                    reference_value = ratio.loc[reference_date]
+                    ratio = (ratio / reference_value) * 100
 
-            fig.add_trace(go.Scatter(
-                x=ratio.index,
-                y=ratio,
-                mode='lines',
-                name=f'{main_stock}/{stock}'
-            ))
+                fig.add_trace(go.Scatter(
+                    x=ratio.index,
+                    y=ratio,
+                    mode='lines',
+                    name=f'{main_stock}/{stock}'
+                ))
 
         fig.update_layout(
             title=f'Ratios de {main_stock} respecto a otros activos',
