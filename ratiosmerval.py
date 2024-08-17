@@ -38,8 +38,10 @@ if st.button('Obtener Datos y Graficar'):
 
         if view_as_percentages:
             if reference_date not in ratio.index:
-                st.warning(f"La fecha de referencia {reference_date} no existe en los datos. Por favor, elija otra fecha.")
-                continue
+                # Find nearest date
+                nearest_date = ratio.index.get_loc(reference_date, method='nearest')
+                reference_date = ratio.index[nearest_date]
+                st.warning(f"La fecha de referencia {reference_date} ha sido ajustada a la fecha más cercana disponible.")
 
             reference_value = ratio.loc[reference_date]
             ratio = (ratio / reference_value - 1) * 100
@@ -71,7 +73,7 @@ if st.button('Obtener Datos y Graficar'):
                 xref="x", yref="y"
             )
         else:
-            # Add horizontal line at 1 when ratios are close to 1
+            # Add horizontal line at 1 if ratio values are close to 1
             if ratio.min() < 1.05 and ratio.max() > 0.95:
                 fig.add_shape(
                     type="line",
