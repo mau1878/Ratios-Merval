@@ -117,7 +117,7 @@ if st.button('Obtener Datos y Graficar'):
                 fig.add_shape(
                     type="line",
                     x0=ratio.index.min(), y0=avg_ratio, x1=ratio.index.max(), y1=avg_ratio,
-                    line=dict(color="blue", dash="dash"),
+                    line=dict(color="white", dash="dash"),
                     xref="x", yref="y"
                 )
                 fig.add_annotation(
