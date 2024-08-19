@@ -73,6 +73,7 @@ if st.button('Obtener Datos y Graficar'):
     else:
         fig = go.Figure()
 
+        # For additional tickers
         for stock in extra_stocks:
             if stock not in data.columns:
                 st.warning(f"No se encontró el ticker '{stock}' en los datos.")
@@ -111,40 +112,57 @@ if st.button('Obtener Datos y Graficar'):
                 name=f'{main_stock} / {stock} {name_suffix}'
             ))
 
-            # If only one additional ticker is selected, show the average ratio line
+            # If only one additional ticker is selected, show the SMA and histogram
             if len(extra_stocks) == 1:
-                avg_ratio = ratio.mean()
-                fig.add_shape(
-                    type="line",
-                    x0=ratio.index.min(), y0=avg_ratio, x1=ratio.index.max(), y1=avg_ratio,
-                    line=dict(color="white", dash="dash"),
-                    xref="x", yref="y"
-                )
-                fig.add_annotation(
-                    x=ratio.index.max(), y=avg_ratio,
-                    text=f'Promedio: {avg_ratio:.2f}',
-                    showarrow=False,
-                    yshift=10,
-                    xanchor="left"
+                # SMA period input
+                sma_period = st.number_input('Periodo de la media móvil simple (SMA):', min_value=1, value=20)
+
+                # Calculate SMA
+                sma = ratio.rolling(window=sma_period).mean()
+
+                # Plot ratio with SMA
+                fig_sma = go.Figure()
+
+                fig_sma.add_trace(go.Scatter(
+                    x=ratio.index,
+                    y=ratio,
+                    mode='lines',
+                    name=f'Ratio {main_stock} / {stock}'
+                ))
+
+                fig_sma.add_trace(go.Scatter(
+                    x=sma.index,
+                    y=sma,
+                    mode='lines',
+                    name=f'SMA {sma_period} días',
+                    line=dict(color='orange')
+                ))
+
+                # Histogram of dispersion
+                dispersion = ratio - sma
+                fig_dispersion = go.Figure()
+
+                fig_dispersion.add_trace(go.Histogram(
+                    x=dispersion,
+                    nbinsx=50,
+                    name='Dispersion',
+                    marker_color='lightblue'
+                ))
+
+                max_dispersion = dispersion.max()
+                min_dispersion = dispersion.min()
+
+                fig_dispersion.update_layout(
+                    title='Histograma de Dispersión',
+                    xaxis_title='Dispersión',
+                    yaxis_title='Frecuencia'
                 )
 
-            elif view_as_percentages:
-                # Add horizontal line at 0% for percentages view
-                fig.add_shape(
-                    type="line",
-                    x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
-                    line=dict(color="red", dash="dash"),
-                    xref="x", yref="y"
-                )
-            else:
-                # Add horizontal line at 1 if ratio values are close to 1
-                if ratio.min() < 1.05 and ratio.max() > 0.95:
-                    fig.add_shape(
-                        type="line",
-                        x0=ratio.index.min(), y0=1, x1=ratio.index.max(), y1=1,
-                        line=dict(color="red", dash="dash"),
-                        xref="x", yref="y"
-                    )
+                st.plotly_chart(fig_sma, use_container_width=True)
+                st.plotly_chart(fig_dispersion, use_container_width=True)
+
+                st.write(f'Máxima Dispersión: {max_dispersion:.2f}')
+                st.write(f'Mínima Dispersión: {min_dispersion:.2f}')
 
         fig.update_layout(
             title=f'Ratios de {main_stock} con activos seleccionados',
@@ -156,3 +174,4 @@ if st.button('Obtener Datos y Graficar'):
         )
 
         st.plotly_chart(fig, use_container_width=True)
+
