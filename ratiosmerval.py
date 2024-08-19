@@ -180,14 +180,14 @@ if st.button('Obtener Datos y Graficar'):
                 fig.add_shape(
                     type="line",
                     x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
-line=dict(color="red", dash="dash"),
-xref="x", yref="y"
-)
-                    fig.update_layout(
-        title=f'Ratio de {main_stock} con {' '.join(extra_stocks)}',
-        xaxis_title='Fecha',
-        yaxis_title='Ratio',
-        legend_title='Ratios'
-    )
+                    line=dict(color="red", dash="dash"),
+                    xref="x", yref="y"
+                )
+                fig.update_layout(
+                    title=f'Ratio de {main_stock} con {" ".join(extra_stocks)}',
+                    xaxis_title='Fecha',
+                    yaxis_title='Ratio',
+                    legend_title='Ratios'
+                )
 
-    st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
