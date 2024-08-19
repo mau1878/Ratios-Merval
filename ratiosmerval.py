@@ -25,38 +25,40 @@ def get_recent_valid_date(start_date, end_date):
 # Streamlit UI
 st.title('Análisis de Ratios de Activos del MERVAL. De MTAURUS - X: https://x.com/MTaurus_ok')
 
-# Main stock selection
-main_stock_input = st.text_input('Ingresar manualmente un ticker principal (si no está en la lista):', '').upper()
-main_stock = st.selectbox(
-    'Seleccionar el ticker principal:',
-    options=[main_stock_input] + tickers if main_stock_input else tickers,
-    index=0 if main_stock_input else 0
-)
+# Sidebar inputs
+with st.sidebar:
+    # Main stock selection
+    main_stock_input = st.text_input('Ingresar manualmente un ticker principal (si no está en la lista):', '').upper()
+    main_stock = st.selectbox(
+        'Seleccionar el ticker principal:',
+        options=[main_stock_input] + tickers if main_stock_input else tickers,
+        index=0 if main_stock_input else 0
+    )
 
-# Additional tickers selection
-extra_stocks_input = st.text_input('Ingresar manualmente tickers adicionales (separados por comas):', '').upper()
+    # Additional tickers selection
+    extra_stocks_input = st.text_input('Ingresar manualmente tickers adicionales (separados por comas):', '').upper()
+    extra_stocks_manual = [ticker.strip() for ticker in extra_stocks_input.split(',') if ticker.strip()]
+    extra_stocks_options = extra_stocks_manual + tickers
+    extra_stocks = st.multiselect(
+        'Seleccionar hasta 6 tickers adicionales:',
+        options=extra_stocks_options,
+        default=extra_stocks_manual[:6]  # Preselect manually entered tickers, up to 6
+    )
 
-# Split and clean the manually entered tickers
-extra_stocks_manual = [ticker.strip() for ticker in extra_stocks_input.split(',') if ticker.strip()]
-extra_stocks_options = extra_stocks_manual + tickers
+    # Date inputs
+    start_date = st.date_input("Fecha de inicio", pd.to_datetime("2023-01-01"))
+    end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"))
 
-extra_stocks = st.multiselect(
-    'Seleccionar hasta 6 tickers adicionales:',
-    options=extra_stocks_options,
-    default=extra_stocks_manual[:6]  # Preselect manually entered tickers, up to 6
-)
+    # Determine the most recent valid date for the reference date
+    today = pd.to_datetime("today")
+    most_recent_valid_date = get_recent_valid_date(start_date, today)
+    reference_date = st.date_input("Fecha de referencia para visualizar como porcentajes:", most_recent_valid_date)
 
-# Date inputs
-start_date = st.date_input("Fecha de inicio", pd.to_datetime("2023-01-01"))
-end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"))
+    # Checkbox to choose percentage view
+    view_as_percentages = st.checkbox('Ver como porcentajes en vez de ratios')
 
-# Determine the most recent valid date for the reference date
-today = pd.to_datetime("today")
-most_recent_valid_date = get_recent_valid_date(start_date, today)
-reference_date = st.date_input("Fecha de referencia para visualizar como porcentajes:", most_recent_valid_date)
-
-# Checkbox to choose percentage view
-view_as_percentages = st.checkbox('Ver como porcentajes en vez de ratios')
+    # SMA input field
+    sma_period = st.number_input('Periodo de SMA', min_value=1, value=20, key='sma_period')
 
 # Fetch and process data
 if st.button('Obtener Datos y Graficar'):
@@ -112,9 +114,6 @@ if st.button('Obtener Datos y Graficar'):
 
             # If only one additional ticker is selected, show the SMA and histogram
             if len(extra_stocks) == 1:
-                # SMA input field
-                sma_period = st.number_input('Periodo de SMA', min_value=1, value=20, key='sma_period')
-
                 # Calculate SMA
                 sma = ratio.rolling(window=sma_period).mean()
 
@@ -187,12 +186,12 @@ if st.button('Obtener Datos y Graficar'):
                 # Max and Min dispersion
                 max_dispersion = dispersion.max()
                 min_dispersion = dispersion.min()
-                st.write(f"Dispersión máxima: {max_dispersion:.2f}")
-                st.write(f"Dispersión mínima: {min_dispersion:.2f}")
-
+                st.write(f"Dispersión Máxima: {max_dispersion:.2f}")
+                st.write(f"Dispersión Mínima: {min_dispersion:.2f}")
+                
                 st.plotly_chart(fig_hist, use_container_width=True)
 
-        # Show the ratio graph
+        # Plot the ratio graph
         fig.update_layout(
             title=f'Ratio de {main_stock} con {" y ".join(extra_stocks)}',
             xaxis_title='Fecha',
@@ -201,5 +200,4 @@ if st.button('Obtener Datos y Graficar'):
             yaxis=dict(showgrid=True),
             xaxis=dict(showgrid=True)
         )
-
         st.plotly_chart(fig, use_container_width=True)
