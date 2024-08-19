@@ -81,7 +81,10 @@ if st.button('Obtener Datos y Graficar'):
             st.stop()  # Stop Streamlit execution
 
         # Fill missing data with the last available value
-        data.fillna(method='ffill', inplace=True)
+        if isinstance(data, pd.DataFrame):
+            data.ffill(inplace=True)
+        elif isinstance(data, pd.Series):
+            data.ffill(inplace=True)
 
         # Check if main stock exists in data
         if main_stock not in data.columns:
