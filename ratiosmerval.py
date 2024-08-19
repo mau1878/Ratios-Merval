@@ -60,6 +60,7 @@ view_as_percentages = st.checkbox('Ver como porcentajes en vez de ratios')
 
 # Fetch and process data
 if st.button('Obtener Datos y Graficar'):
+    # Fetch data
     data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date)['Adj Close']
     
     # Fill missing data with the last available value
@@ -69,15 +70,15 @@ if st.button('Obtener Datos y Graficar'):
     if main_stock not in data.columns:
         st.error(f"No se encontró el ticker principal '{main_stock}' en los datos.")
     else:
+        # Plot setup
         fig = go.Figure()
-
         for stock in extra_stocks:
             if stock not in data.columns:
                 st.warning(f"No se encontró el ticker '{stock}' en los datos.")
                 continue
             
             ratio = data[main_stock] / data[stock]
-
+            
             if view_as_percentages:
                 reference_date = pd.Timestamp(reference_date)
 
@@ -193,7 +194,7 @@ if st.button('Obtener Datos y Graficar'):
 
         # Show the ratio graph
         fig.update_layout(
-            title=f'Ratio de {main_stock} con {' y '.join(extra_stocks)}',
+            title=f'Ratio de {main_stock} con {" y ".join(extra_stocks)}',
             xaxis_title='Fecha',
             yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
             xaxis_rangeslider_visible=False,
