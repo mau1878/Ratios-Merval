@@ -25,7 +25,7 @@ def get_recent_valid_date(start_date, end_date):
     return end_date
 
 # Streamlit UI
-st.title('Análisis de Ratios de Activos del MERVAL')
+st.title('Análisis de Ratios de Activos del MERVAL. De MTAURUS - X: https://x.com/MTaurus_ok')
 
 # Main stock selection
 main_stock_input = st.text_input('Ingresar manualmente un ticker principal (si no está en la lista):', '').upper()
