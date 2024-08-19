@@ -66,18 +66,20 @@ if st.button('Obtener Datos y Graficar'):
         # Fetch data
         data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date, group_by='ticker')
         
-        # Check if 'data' is a DataFrame or a Series
+        # If the data is a DataFrame and contains multi-level columns
         if isinstance(data, pd.DataFrame):
-            if 'Adj Close' in data.columns:
+            # If multi-index columns, convert to single index
+            if isinstance(data.columns, pd.MultiIndex):
                 data = data['Adj Close']
-            else:
-                data = data.rename(columns=lambda x: x.split()[0])  # Fix if columns have extra info
+            elif 'Adj Close' in data.columns:
+                data = data['Adj Close']
         elif isinstance(data, pd.Series):
             data = data.to_frame().T
             data.columns = [main_stock] + extra_stocks
         else:
             st.error("Error: `data` is neither a DataFrame nor a Series.")
             st.stop()  # Stop Streamlit execution
+
         # Fill missing data with the last available value
         data.fillna(method='ffill', inplace=True)
 
@@ -186,7 +188,7 @@ if st.button('Obtener Datos y Graficar'):
                     for p, value in zip(percentiles, percentile_values):
                         fig_hist.add_shape(
                             type="line",
-                            x0=value, y0=0, x1=value, y1=dispersion.max(),
+                            x0=value, y0=0, x1=value, y1=dispersion.max() * 0.95,
                             line=dict(color="red", dash="dash"),
                             xref="x", yref="y"
                         )
