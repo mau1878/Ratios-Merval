@@ -62,153 +62,158 @@ with st.sidebar:
 
 # Fetch and process data
 if st.button('Obtener Datos y Graficar'):
-    # Fetch data
-    data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date)['Adj Close']
-    
-    # Fill missing data with the last available value
-    data.fillna(method='ffill', inplace=True)
+    try:
+        # Fetch data
+        data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date)['Adj Close']
 
-    # Check if main stock exists in data
-    if main_stock not in data.columns:
-        st.error(f"No se encontró el ticker principal '{main_stock}' en los datos.")
-    else:
-        # Plot setup
-        fig = go.Figure()
-        for stock in extra_stocks:
-            if stock not in data.columns:
-                st.warning(f"No se encontró el ticker '{stock}' en los datos.")
-                continue
-            
-            ratio = data[main_stock] / data[stock]
-            
-            if view_as_percentages:
-                reference_date = pd.Timestamp(reference_date)
+        # Debug: Check if data is a DataFrame and has expected columns
+        if not isinstance(data, pd.DataFrame):
+            st.error("Error: `data` is not a DataFrame.")
+        elif data.empty:
+            st.error("No data fetched. Please check the tickers and date range.")
+        else:
+            st.write(data.columns)
 
-                # Find the nearest available date to the reference_date
-                if reference_date not in ratio.index:
-                    differences = abs(ratio.index - reference_date)
-                    closest_date = ratio.index[differences.argmin()]
-                    reference_date = closest_date
-                    st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date.date()}")
+        # Fill missing data with the last available value
+        data.fillna(method='ffill', inplace=True)
 
-                reference_value = ratio.loc[reference_date]
-                ratio = (ratio / reference_value - 1) * 100
-                name_suffix = f"({reference_value:.2f})"
+        # Check if main stock exists in data
+        if main_stock not in data.columns:
+            st.error(f"No se encontró el ticker principal '{main_stock}' en los datos.")
+        else:
+            # Plot setup
+            fig = go.Figure()
+            for stock in extra_stocks:
+                if stock not in data.columns:
+                    st.warning(f"No se encontró el ticker '{stock}' en los datos.")
+                    continue
                 
-                # Add vertical reference line
-                fig.add_shape(
-                    type="line",
-                    x0=reference_date, y0=ratio.min(), x1=reference_date, y1=ratio.max(),
-                    line=dict(color="yellow", dash="dash"),
-                    xref="x", yref="y"
-                )
-            else:
-                name_suffix = ""
+                ratio = data[main_stock] / data[stock]
+                
+                if view_as_percentages:
+                    reference_date = pd.Timestamp(reference_date)
 
-            fig.add_trace(go.Scatter(
-                x=ratio.index,
-                y=ratio,
-                mode='lines',
-                name=f'{main_stock} / {stock} {name_suffix}'
-            ))
+                    # Find the nearest available date to the reference_date
+                    if reference_date not in ratio.index:
+                        differences = abs(ratio.index - reference_date)
+                        closest_date = ratio.index[differences.argmin()]
+                        reference_date = closest_date
+                        st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date.date()}")
 
-            # If only one additional ticker is selected, show the SMA and histogram
-            if len(extra_stocks) == 1:
-                # Calculate SMA
-                sma = ratio.rolling(window=sma_period).mean()
+                    reference_value = ratio.loc[reference_date]
+                    ratio = (ratio / reference_value - 1) * 100
+                    name_suffix = f"({reference_value:.2f})"
+                    
+                    # Add vertical reference line
+                    fig.add_shape(
+                        type="line",
+                        x0=reference_date, y0=ratio.min(), x1=reference_date, y1=ratio.max(),
+                        line=dict(color="yellow", dash="dash"),
+                        xref="x", yref="y"
+                    )
+                else:
+                    name_suffix = ""
 
-                # Create figure with SMA
-                fig_sma = go.Figure()
-                fig_sma.add_trace(go.Scatter(
+                fig.add_trace(go.Scatter(
                     x=ratio.index,
                     y=ratio,
                     mode='lines',
-                    name=f'{main_stock} / {stock}'
-                ))
-                fig_sma.add_trace(go.Scatter(
-                    x=sma.index,
-                    y=sma,
-                    mode='lines',
-                    name=f'SMA {sma_period}',
-                    line=dict(color='orange')
-                ))
-                
-                # Average value line
-                average_value = ratio.mean()
-                fig_sma.add_trace(go.Scatter(
-                    x=[ratio.index.min(), ratio.index.max()],
-                    y=[average_value, average_value],
-                    mode='lines',
-                    name=f'Promedio ({average_value:.2f})',
-                    line=dict(color='purple', dash='dot')
-                ))
-                
-                fig_sma.update_layout(
-                    title=f'Ratio de {main_stock} con {stock} y SMA ({sma_period} días)',
-                    xaxis_title='Fecha',
-                    yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
-                    xaxis_rangeslider_visible=False,
-                    yaxis=dict(showgrid=True),
-                    xaxis=dict(showgrid=True)
-                )
-                
-                st.plotly_chart(fig_sma, use_container_width=True)
-                
-                # Histogram of dispersion
-                dispersion = ratio - sma
-                dispersion = dispersion.dropna()
-                
-                fig_hist = go.Figure()
-                fig_hist.add_trace(go.Histogram(
-                    x=dispersion,
-                    nbinsx=50,
-                    marker=dict(color='lightblue')
+                    name=f'{main_stock} / {stock} {name_suffix}'
                 ))
 
-                # Add percentile lines to histogram
-                percentiles = [5, 25, 50, 75, 95]
-                percentile_values = np.percentile(dispersion, percentiles)
-                
-                for p, value in zip(percentiles, percentile_values):
-                    fig_hist.add_shape(
-                        type="line",
-                        x0=value, y0=0, x1=value, y1=dispersion.max(),
-                        line=dict(color='blue', dash='dash'),  # You can use different colors for different percentiles if desired
-                        xref="x", yref="y"
-                    )
-                    fig_hist.add_annotation(
-                        x=value, y=0,
-                        text=f'{p}%',
-                        showarrow=False,
-                        yshift=10,
-                        xanchor="left",
-                        font=dict(color='blue')
-                    )
-                
-                fig_hist.update_layout(
-                    title=f'Histograma de Dispersión (SMA {sma_period})',
-                    xaxis_title='Dispersión',
-                    yaxis_title='Frecuencia',
-                    xaxis=dict(showgrid=True),
-                    yaxis=dict(showgrid=True)
-                )
-                
-                # Dispersion values
-                max_dispersion = dispersion.max()
-                min_dispersion = dispersion.min()
-                st.write(f"Dispersión Máxima: {max_dispersion:.2f}")
-                st.write(f"Dispersión Mínima: {min_dispersion:.2f}")
-                
-                st.plotly_chart(fig_hist, use_container_width=True)
+                # If only one additional ticker is selected, show the SMA and histogram
+                if len(extra_stocks) == 1:
+                    # Calculate SMA
+                    sma = ratio.rolling(window=sma_period).mean()
 
-        # Update ratio graph
-        fig.update_layout(
-            title=f'Ratio de {main_stock} con {" y ".join(extra_stocks)}',
-            xaxis_title='Fecha',
-            yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
-            xaxis_rangeslider_visible=False,
-            yaxis=dict(showgrid=True),
-            xaxis=dict(showgrid=True)
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
+                    # Create figure with SMA
+                    fig_sma = go.Figure()
+                    fig_sma.add_trace(go.Scatter(
+                        x=ratio.index,
+                        y=ratio,
+                        mode='lines',
+                        name=f'{main_stock} / {stock}'
+                    ))
+                    fig_sma.add_trace(go.Scatter(
+                        x=sma.index,
+                        y=sma,
+                        mode='lines',
+                        name=f'SMA {sma_period}',
+                        line=dict(color='orange')
+                    ))
+                    
+                    # Average value line
+                    average_value = ratio.mean()
+                    fig_sma.add_trace(go.Scatter(
+                        x=[ratio.index.min(), ratio.index.max()],
+                        y=[average_value, average_value],
+                        mode='lines',
+                        name=f'Promedio ({average_value:.2f})',
+                        line=dict(color='purple', dash='dot')
+                    ))
+                    
+                    fig_sma.update_layout(
+                        title=f'Ratio de {main_stock} con {stock} y SMA ({sma_period} días)',
+                        xaxis_title='Fecha',
+                        yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
+                        xaxis_rangeslider_visible=False,
+                        yaxis=dict(showgrid=True),
+                        xaxis=dict(showgrid=True)
+                    )
+                    
+                    st.plotly_chart(fig_sma, use_container_width=True)
+                    
+                    # Histogram of dispersion
+                    dispersion = ratio - sma
+                    dispersion = dispersion.dropna()
+                    
+                    fig_hist = go.Figure()
+                    fig_hist.add_trace(go.Histogram(
+                        x=dispersion,
+                        nbinsx=50,
+                        marker=dict(color='lightblue')
+                    ))
+
+                    # Add percentile lines to histogram
+                    percentiles = [5, 25, 50, 75, 95]
+                    percentile_values = np.percentile(dispersion, percentiles)
+                    
+                    for p, value in zip(percentiles, percentile_values):
+                        fig_hist.add_shape(
+                            type="line",
+                            x0=value, y0=0, x1=value, y1=dispersion.max(),
+                            line=dict(color='blue', dash='dash'),  # You can use different colors for different percentiles if desired
+                            xref="x", yref="y"
+                        )
+                        fig_hist.add_annotation(
+                            x=value, y=0,
+                            text=f'{p}%',
+                            showarrow=False,
+                            yshift=10,
+                            xanchor="left",
+                            font=dict(color='blue')
+                        )
+                    
+                    fig_hist.update_layout(
+                        title=f'Histograma de Dispersión (SMA {sma_period})',
+                        xaxis_title='Dispersión',
+                        yaxis_title='Frecuencia',
+                        xaxis=dict(showgrid=True),
+                        yaxis=dict(showgrid=True)
+                    )
+                    
+                    st.plotly_chart(fig_hist, use_container_width=True)
+
+            # Update main figure layout
+            fig.update_layout(
+                title='Ratios de Activos',
+                xaxis_title='Fecha',
+                yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
+                xaxis_rangeslider_visible=False,
+                yaxis=dict(showgrid=True),
+                xaxis=dict(showgrid=True)
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"Se produjo un error: {e}")
