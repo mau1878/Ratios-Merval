@@ -133,6 +133,16 @@ if st.button('Obtener Datos y Graficar'):
                     line=dict(color='orange')
                 ))
                 
+                # Average value line
+                average_value = ratio.mean()
+                fig_sma.add_trace(go.Scatter(
+                    x=[ratio.index.min(), ratio.index.max()],
+                    y=[average_value, average_value],
+                    mode='lines',
+                    name=f'Promedio ({average_value:.2f})',
+                    line=dict(color='purple', dash='dot')
+                ))
+                
                 fig_sma.update_layout(
                     title=f'Ratio de {main_stock} con {stock} y SMA ({sma_period} días)',
                     xaxis_title='Fecha',
@@ -176,14 +186,14 @@ if st.button('Obtener Datos y Graficar'):
                     )
                 
                 fig_hist.update_layout(
-                    title='Histograma de Dispersión',
+                    title=f'Histograma de Dispersión (SMA {sma_period})',
                     xaxis_title='Dispersión',
                     yaxis_title='Frecuencia',
                     xaxis=dict(showgrid=True),
                     yaxis=dict(showgrid=True)
                 )
-
-                # Max and Min dispersion
+                
+                # Dispersion values
                 max_dispersion = dispersion.max()
                 min_dispersion = dispersion.min()
                 st.write(f"Dispersión Máxima: {max_dispersion:.2f}")
@@ -191,7 +201,7 @@ if st.button('Obtener Datos y Graficar'):
                 
                 st.plotly_chart(fig_hist, use_container_width=True)
 
-        # Plot the ratio graph
+        # Update ratio graph
         fig.update_layout(
             title=f'Ratio de {main_stock} con {" y ".join(extra_stocks)}',
             xaxis_title='Fecha',
@@ -200,4 +210,5 @@ if st.button('Obtener Datos y Graficar'):
             yaxis=dict(showgrid=True),
             xaxis=dict(showgrid=True)
         )
+        
         st.plotly_chart(fig, use_container_width=True)
