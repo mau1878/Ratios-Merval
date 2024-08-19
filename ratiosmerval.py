@@ -68,11 +68,17 @@ if st.button('Obtener Datos y Graficar'):
 
         # Debug: Print the structure of `data`
         st.write("Data structure:", data.head())
+        st.write("Columns available:", data.columns)
 
         # Ensure data is a DataFrame
         if isinstance(data, pd.DataFrame):
             if isinstance(data.columns, pd.MultiIndex):
-                data = data['Adj Close']
+                # Access 'Adj Close' correctly if MultiIndex
+                if 'Adj Close' in data.columns.levels[0]:
+                    data = data['Adj Close']
+                else:
+                    st.error("Error: 'Adj Close' column not found in multi-indexed data.")
+                    st.stop()
             elif 'Adj Close' in data.columns:
                 data = data['Adj Close']
             else:
@@ -182,11 +188,9 @@ if st.button('Obtener Datos y Graficar'):
                     fig_hist = go.Figure()
                     fig_hist.add_trace(go.Histogram(
                         x=dispersion,
-                        nbinsx=50,
-                        marker=dict(color='lightblue')
+                        nbinsx=50
                     ))
-
-                    # Add percentile lines to histogram
+                    
                     percentiles = [25, 50, 75]
                     for p in percentiles:
                         value = np.percentile(dispersion, p)
