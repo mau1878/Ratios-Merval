@@ -166,23 +166,23 @@ if st.button('Obtener Datos y Graficar'):
                 ))
 
                 # Add percentile lines to histogram
-                percentiles = [0.25, 0.5, 0.75]
-                colors = ['blue', 'green', 'red']
-                for p, color in zip(percentiles, colors):
-                    percentile_value = np.percentile(dispersion, p * 100)
+                percentiles = [5, 25, 50, 75, 95]
+                percentile_values = np.percentile(dispersion, percentiles)
+                
+                for p, value in zip(percentiles, percentile_values):
                     fig_hist.add_shape(
                         type="line",
-                        x0=percentile_value, y0=0, x1=percentile_value, y1=dispersion.max(),
-                        line=dict(color=color, dash="dash"),
+                        x0=value, y0=0, x1=value, y1=dispersion.max(),
+                        line=dict(color='blue', dash='dash'),  # You can use different colors for different percentiles if desired
                         xref="x", yref="y"
                     )
                     fig_hist.add_annotation(
-                        x=percentile_value, y=0,
-                        text=f'{int(p * 100)}%',
+                        x=value, y=0,
+                        text=f'{p}%',
                         showarrow=False,
                         yshift=10,
                         xanchor="left",
-                        font=dict(color=color)
+                        font=dict(color='blue')
                     )
                 
                 fig_hist.update_layout(
