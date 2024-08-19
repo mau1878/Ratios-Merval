@@ -19,7 +19,9 @@ tickers = [
 def get_recent_valid_date(start_date, end_date):
     while end_date.weekday() >= 5:  # Skip weekends
         end_date -= pd.Timedelta(days=1)
+    
     # Adjust this function if you have a list of holidays
+    # For example, if you have a list of holidays, add a check to exclude them
     return end_date
 
 # Streamlit UI
@@ -35,6 +37,8 @@ main_stock = st.selectbox(
 
 # Additional tickers selection
 extra_stocks_input = st.text_input('Ingresar manualmente tickers adicionales (separados por comas):', '').upper()
+
+# Split and clean the manually entered tickers
 extra_stocks_manual = [ticker.strip() for ticker in extra_stocks_input.split(',') if ticker.strip()]
 extra_stocks_options = extra_stocks_manual + tickers
 
@@ -55,17 +59,6 @@ reference_date = st.date_input("Fecha de referencia para visualizar como porcent
 
 # Checkbox to choose percentage view
 view_as_percentages = st.checkbox('Ver como porcentajes en vez de ratios')
-
-# SMA period selection (only if one additional ticker is selected)
-sma_period = None
-if len(extra_stocks) == 1:
-    sma_period = st.slider(
-        'Seleccionar el periodo de SMA (si se muestra solo un ratio):',
-        min_value=2,  # Minimum SMA period
-        max_value=60,  # Maximum SMA period
-        value=10,  # Default SMA period
-        step=1
-    )
 
 # Fetch and process data
 if st.button('Obtener Datos y Graficar'):
@@ -118,76 +111,47 @@ if st.button('Obtener Datos y Graficar'):
                 name=f'{main_stock} / {stock} {name_suffix}'
             ))
 
-            # If only one additional ticker is selected, show the average ratio line
+            # If only one additional ticker is selected, show the SMA
             if len(extra_stocks) == 1:
-                avg_ratio = ratio.mean()
+                # Add SMA period input
+                sma_period = st.number_input('Periodo del SMA (solo si un ticker adicional está seleccionado):', min_value=1, value=20)
+
+                # Calculate and plot SMA
+                sma = ratio.rolling(window=sma_period).mean()
                 fig.add_trace(go.Scatter(
                     x=ratio.index,
-                    y=np.full_like(ratio.index, avg_ratio),
+                    y=sma,
                     mode='lines',
-                    name=f'Promedio: {avg_ratio:.2f}',
-                    line=dict(color="blue", dash="dash")  # Clearly visible color
+                    name=f'SMA {sma_period} días',
+                    line=dict(color='orange', width=2)
                 ))
 
-                # Plot SMA if selected
-                if sma_period:
-                    sma = ratio.rolling(window=sma_period).mean()
-                    fig.add_trace(go.Scatter(
-                        x=ratio.index,
-                        y=sma,
-                        mode='lines',
-                        name=f'SMA {sma_period}',
-                        line=dict(color="red", width=2)  # Clearly visible color
-                    ))
+                # Calculate and plot histogram of dispersion
+                dispersion = ratio - sma
+                fig2 = go.Figure()
 
-                    # Add histogram of dispersion
-                    dispersion = (ratio - sma).abs()
-                    fig_hist = go.Figure()
-                    fig_hist.add_trace(go.Histogram(
-                        x=dispersion,
-                        nbinsx=50,
-                        name='Dispersion'
-                    ))
+                fig2.add_trace(go.Histogram(
+                    x=dispersion,
+                    nbinsx=50,
+                    marker_color='blue'
+                ))
 
-                    # Add vertical dotted lines for percentiles
-                    percentiles = [0.25, 0.5, 0.75]
-                    for p in percentiles:
-                        perc_value = np.percentile(dispersion, p * 100)
-                        fig_hist.add_shape(
-                            type="line",
-                            x0=perc_value, y0=0, x1=perc_value, y1=dispersion.max(),
-                            line=dict(color="green", dash="dot"),
-                            xref="x", yref="y"
-                        )
-                        fig_hist.add_annotation(
-                            x=perc_value,
-                            y=dispersion.max(),
-                            text=f'{int(p*100)}%',
-                            showarrow=False,
-                            yshift=10,
-                            xanchor="left"
-                        )
-
-                    fig_hist.update_layout(
-                        title=f'Dispersión de {main_stock} / {extra_stocks[0]}',
-                        xaxis_title='Dispersion',
-                        yaxis_title='Frecuencia'
-                    )
-                    st.plotly_chart(fig_hist, use_container_width=True)
-
-            elif view_as_percentages:
-                # Add horizontal line at 0% for percentages view
-                fig.add_shape(
-                    type="line",
-                    x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
-                    line=dict(color="red", dash="dash"),
-                    xref="x", yref="y"
-                )
-                fig.update_layout(
-                    title=f'Ratio de {main_stock} con {" ".join(extra_stocks)}',
-                    xaxis_title='Fecha',
-                    yaxis_title='Ratio',
-                    legend_title='Ratios'
-                )
-
-        st.plotly_chart(fig, use_container_width=True)
+                # Calculate and display max and min dispersion
+                max_dispersion = dispersion.max()
+                min_dispersion = dispersion.min()
+                fig2.update_layout(
+                    title='Histograma de Dispersión',
+                    xaxis_title='Dispersión',
+                    yaxis_title='Frecuencia',
+                    annotations=[
+                        dict(
+                            x=max_dispersion, y=0,
+                            xref='x', yref='y',
+                            text=f'Máx: {max_dispersion:.2f}',
+                            showarrow=True,
+                            arrowhead=2,
+                            ax=0,
+                            ay=-40
+                        ),
+                        dict(
+                            x=min_dispersion
