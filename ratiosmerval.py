@@ -111,8 +111,8 @@ if st.button('Obtener Datos y Graficar'):
 
             # If only one additional ticker is selected, show the SMA and histogram
             if len(extra_stocks) == 1:
-                # SMA input
-                sma_period = st.number_input('Periodo de SMA', min_value=1, value=20)
+                # SMA input field
+                sma_period = st.number_input('Periodo de SMA', min_value=1, value=20, key='sma_period')
 
                 # Calculate SMA
                 sma = ratio.rolling(window=sma_period).mean()
@@ -154,6 +154,27 @@ if st.button('Obtener Datos y Graficar'):
                     nbinsx=50,
                     marker=dict(color='lightblue')
                 ))
+
+                # Add percentile lines to histogram
+                percentiles = [0.25, 0.5, 0.75]
+                colors = ['blue', 'green', 'red']
+                for p, color in zip(percentiles, colors):
+                    percentile_value = np.percentile(dispersion, p * 100)
+                    fig_hist.add_shape(
+                        type="line",
+                        x0=percentile_value, y0=0, x1=percentile_value, y1=dispersion.max(),
+                        line=dict(color=color, dash="dash"),
+                        xref="x", yref="y"
+                    )
+                    fig_hist.add_annotation(
+                        x=percentile_value, y=0,
+                        text=f'{int(p * 100)}%',
+                        showarrow=False,
+                        yshift=10,
+                        xanchor="left",
+                        font=dict(color=color)
+                    )
+                
                 fig_hist.update_layout(
                     title='Histograma de Dispersión',
                     xaxis_title='Dispersión',
@@ -165,13 +186,14 @@ if st.button('Obtener Datos y Graficar'):
                 # Max and Min dispersion
                 max_dispersion = dispersion.max()
                 min_dispersion = dispersion.min()
-                st.write(f"Dispersión Máxima: {max_dispersion:.2f}")
-                st.write(f"Dispersión Mínima: {min_dispersion:.2f}")
-                
+                st.write(f"Dispersión máxima: {max_dispersion:.2f}")
+                st.write(f"Dispersión mínima: {min_dispersion:.2f}")
+
                 st.plotly_chart(fig_hist, use_container_width=True)
 
+        # Show the ratio graph
         fig.update_layout(
-            title=f'Ratios de {main_stock} con activos seleccionados',
+            title=f'Ratio de {main_stock} con {' y '.join(extra_stocks)}',
             xaxis_title='Fecha',
             yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
             xaxis_rangeslider_visible=False,
@@ -180,4 +202,3 @@ if st.button('Obtener Datos y Graficar'):
         )
 
         st.plotly_chart(fig, use_container_width=True)
-
