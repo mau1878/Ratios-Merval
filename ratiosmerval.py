@@ -20,7 +20,7 @@ def get_recent_valid_date(start_date, end_date):
     while end_date.weekday() >= 5:  # Skip weekends
         end_date -= pd.Timedelta(days=1)
     
-    # You might need to adjust this function if you have a list of holidays
+    # Adjust this function if you have a list of holidays
     # For example, if you have a list of holidays, add a check to exclude them
     return end_date
 
@@ -28,27 +28,24 @@ def get_recent_valid_date(start_date, end_date):
 st.title('Análisis de Ratios de Activos del MERVAL')
 
 # Main stock selection
-main_stock_input = st.text_input('Ingresar manualmente un ticker principal (si no está en la lista):', '')
-main_stock_input = main_stock_input.upper()
+main_stock_input = st.text_input('Ingresar manualmente un ticker principal (si no está en la lista):', '').upper()
 main_stock = st.selectbox(
     'Seleccionar el ticker principal:',
     options=[main_stock_input] + tickers if main_stock_input else tickers,
-    index=0 if main_stock_input else 0  # Default to the manually entered ticker if provided
+    index=0 if main_stock_input else 0
 )
 
 # Additional tickers selection
-extra_stocks_input = st.text_input('Ingresar manualmente tickers adicionales (separados por comas):', '')
+extra_stocks_input = st.text_input('Ingresar manualmente tickers adicionales (separados por comas):', '').upper()
 
-# Convert manually entered tickers to uppercase
-manual_tickers = [ticker.strip().upper() for ticker in extra_stocks_input.split(',') if ticker]
-
-# Combine manually entered tickers with predefined tickers, removing duplicates
-combined_tickers = list(dict.fromkeys(manual_tickers + tickers))
+# Split and clean the manually entered tickers
+extra_stocks_manual = [ticker.strip() for ticker in extra_stocks_input.split(',') if ticker.strip()]
+extra_stocks_options = extra_stocks_manual + tickers
 
 extra_stocks = st.multiselect(
     'Seleccionar hasta 6 tickers adicionales:',
-    options=combined_tickers,
-    default=combined_tickers[:6]  # Default to the first 6 tickers in the combined list
+    options=extra_stocks_options,
+    default=extra_stocks_manual[:6]  # Preselect manually entered tickers, up to 6
 )
 
 # Date inputs
@@ -66,6 +63,9 @@ view_as_percentages = st.checkbox('Ver como porcentajes en vez de ratios')
 # Fetch and process data
 if st.button('Obtener Datos y Graficar'):
     data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date)['Adj Close']
+    
+    # Fill missing data with the last available value
+    data.fillna(method='ffill', inplace=True)
 
     # Check if main stock exists in data
     if main_stock not in data.columns:
@@ -81,7 +81,6 @@ if st.button('Obtener Datos y Graficar'):
             ratio = data[main_stock] / data[stock]
 
             if view_as_percentages:
-                # Convert reference_date to pandas.Timestamp
                 reference_date = pd.Timestamp(reference_date)
 
                 # Find the nearest available date to the reference_date
