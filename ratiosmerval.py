@@ -64,15 +64,20 @@ with st.sidebar:
 if st.button('Obtener Datos y Graficar'):
     try:
         # Fetch data
-        data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date)['Adj Close']
-
-        # Debug: Check if data is a DataFrame and has expected columns
-        if not isinstance(data, pd.DataFrame):
-            st.error("Error: `data` is not a DataFrame.")
-        elif data.empty:
-            st.error("No data fetched. Please check the tickers and date range.")
+        data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date, group_by='ticker')
+        
+        # Check if 'data' is a DataFrame or a Series
+        if isinstance(data, pd.DataFrame):
+            if 'Adj Close' in data.columns:
+                data = data['Adj Close']
+            else:
+                data = data.rename(columns=lambda x: x.split()[0])  # Fix if columns have extra info
+        elif isinstance(data, pd.Series):
+            data = data.to_frame().T
+            data.columns = [main_stock] + extra_stocks
         else:
-            st.write(data.columns)
+            st.error("Error: `data` is neither a DataFrame nor a Series.")
+            return
 
         # Fill missing data with the last available value
         data.fillna(method='ffill', inplace=True)
@@ -186,16 +191,14 @@ if st.button('Obtener Datos y Graficar'):
                             xref="x", yref="y"
                         )
                         fig_hist.add_annotation(
-                            x=value, y=0,
-                            text=f'{p}%',
-                            showarrow=False,
-                            yshift=10,
-                            xanchor="left",
-                            font=dict(color='blue')
+                            x=value, y=dispersion.max() * 0.95,
+                            text=f'{p}th Percentile',
+                            showarrow=True,
+                            arrowhead=2
                         )
-                    
+
                     fig_hist.update_layout(
-                        title=f'Histograma de Dispersión (SMA {sma_period})',
+                        title='Histograma de Dispersión del Ratio',
                         xaxis_title='Dispersión',
                         yaxis_title='Frecuencia',
                         xaxis=dict(showgrid=True),
