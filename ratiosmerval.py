@@ -66,12 +66,18 @@ if st.button('Obtener Datos y Graficar'):
         # Fetch data
         data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date, group_by='ticker')
 
+        # Debug: Print the structure of `data`
+        st.write("Data structure:", data.head())
+
         # Ensure data is a DataFrame
         if isinstance(data, pd.DataFrame):
             if isinstance(data.columns, pd.MultiIndex):
                 data = data['Adj Close']
             elif 'Adj Close' in data.columns:
                 data = data['Adj Close']
+            else:
+                st.error("Error: 'Adj Close' column not found in data.")
+                st.stop()
         elif isinstance(data, pd.Series):
             data = pd.DataFrame(data).T
             data.columns = [main_stock] + extra_stocks
@@ -181,10 +187,9 @@ if st.button('Obtener Datos y Graficar'):
                     ))
 
                     # Add percentile lines to histogram
-                    percentiles = [5, 25, 50, 75, 95]
-                    percentile_values = np.percentile(dispersion, percentiles)
-                    
-                    for p, value in zip(percentiles, percentile_values):
+                    percentiles = [25, 50, 75]
+                    for p in percentiles:
+                        value = np.percentile(dispersion, p)
                         fig_hist.add_shape(
                             type="line",
                             x0=value, y0=0, x1=value, y1=dispersion.max() * 0.95,
