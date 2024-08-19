@@ -4,7 +4,7 @@ import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 
-# Tickers list
+# Initial tickers list
 tickers = [
     "GGAL.BA", "YPFD.BA", "PAMP.BA", "TXAR.BA", "ALUA.BA", "CRES.BA", "SUPV.BA", "CEPU.BA", "BMA.BA", 
     "TGSU2.BA", "TRAN.BA", "EDN.BA", "LOMA.BA", "MIRG.BA", "DGCU2.BA", "BBAR.BA", "MOLI.BA", "TGNO4.BA", 
@@ -16,16 +16,21 @@ tickers = [
 ]
 
 # Helper function to find the most recent valid trading date
-def get_recent_valid_date(start_date, end_date):
+def get_recent_valid_date(end_date):
     while end_date.weekday() >= 5:  # Skip weekends
         end_date -= pd.Timedelta(days=1)
     
-    # You might need to adjust this function if you have a list of holidays
-    # For example, if you have a list of holidays, add a check to exclude them
+    # Adjust this function if you have a list of holidays
     return end_date
 
 # Streamlit UI
 st.title('Análisis de Ratios de Activos del MERVAL')
+
+# Add option for user to manually enter tickers
+manual_ticker = st.text_input("Agregar ticker manual (separados por coma):")
+if manual_ticker:
+    custom_tickers = [ticker.strip() for ticker in manual_ticker.split(",")]
+    tickers.extend(custom_tickers)
 
 main_stock = st.selectbox('Seleccionar el ticker principal:', tickers)
 extra_stocks = st.multiselect('Seleccionar hasta 6 tickers adicionales:', tickers, default=tickers[1:7])
@@ -34,7 +39,7 @@ end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"))
 
 # Determine the most recent valid date for the reference date
 today = pd.to_datetime("today")
-most_recent_valid_date = get_recent_valid_date(start_date, today)
+most_recent_valid_date = get_recent_valid_date(today)
 reference_date = st.date_input("Fecha de referencia para visualizar como porcentajes:", most_recent_valid_date)
 
 # Checkbox to choose percentage view
@@ -42,12 +47,26 @@ view_as_percentages = st.checkbox('Ver como porcentajes en vez de ratios')
 
 # Fetch and process data
 if st.button('Obtener Datos y Graficar'):
-    data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date)['Adj Close']
+    # Download data for selected stocks
+    data = yf.download([main_stock] + extra_stocks + ['YPFD.BA', 'YPF'], start=start_date, end=end_date)['Adj Close']
+    
+    # Calculate the YPFD.BA/YPF ratio for normalization
+    if 'YPFD.BA' in data.columns and 'YPF' in data.columns:
+        ypf_ratio = data['YPFD.BA'] / data['YPF']
+    else:
+        st.error("No se pudo calcular la relación YPFD.BA/YPF.")
+        st.stop()
 
     fig = go.Figure()
 
     for stock in extra_stocks:
-        ratio = data[main_stock] / data[stock]
+        if '.BA' not in stock:
+            # Normalize by the YPFD.BA/YPF ratio
+            main_ratio = data[main_stock] / ypf_ratio
+            ratio = main_ratio / data[stock]
+        else:
+            # Normalize if necessary
+            ratio = data[main_stock] / (data[stock] / ypf_ratio) if '.BA' in main_stock else data[main_stock] / data[stock]
 
         if view_as_percentages:
             # Convert reference_date to pandas.Timestamp
