@@ -70,15 +70,12 @@ if st.button('Obtener Datos y Graficar'):
         st.write("Data structure:", data.head())
         st.write("Columns available:", data.columns)
 
-        # Ensure data is a DataFrame
+        # Ensure data is a DataFrame and check for MultiIndex columns
         if isinstance(data, pd.DataFrame):
             if isinstance(data.columns, pd.MultiIndex):
-                # Access 'Adj Close' correctly if MultiIndex
-                if 'Adj Close' in data.columns.levels[0]:
-                    data = data['Adj Close']
-                else:
-                    st.error("Error: 'Adj Close' column not found in multi-indexed data.")
-                    st.stop()
+                # Extract 'Adj Close' data from MultiIndex
+                adj_close = pd.DataFrame({ticker: data[ticker]['Adj Close'] for ticker in data.columns.levels[0]})
+                data = adj_close
             elif 'Adj Close' in data.columns:
                 data = data['Adj Close']
             else:
