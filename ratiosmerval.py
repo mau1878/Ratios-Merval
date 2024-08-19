@@ -65,26 +65,22 @@ if st.button('Obtener Datos y Graficar'):
     try:
         # Fetch data
         data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date, group_by='ticker')
-        
-        # If the data is a DataFrame and contains multi-level columns
+
+        # Ensure data is a DataFrame
         if isinstance(data, pd.DataFrame):
-            # If multi-index columns, convert to single index
             if isinstance(data.columns, pd.MultiIndex):
                 data = data['Adj Close']
             elif 'Adj Close' in data.columns:
                 data = data['Adj Close']
         elif isinstance(data, pd.Series):
-            data = data.to_frame().T
+            data = pd.DataFrame(data).T
             data.columns = [main_stock] + extra_stocks
         else:
             st.error("Error: `data` is neither a DataFrame nor a Series.")
             st.stop()  # Stop Streamlit execution
 
         # Fill missing data with the last available value
-        if isinstance(data, pd.DataFrame):
-            data.ffill(inplace=True)
-        elif isinstance(data, pd.Series):
-            data.ffill(inplace=True)
+        data.ffill(inplace=True)
 
         # Check if main stock exists in data
         if main_stock not in data.columns:
