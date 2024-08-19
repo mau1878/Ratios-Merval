@@ -19,9 +19,7 @@ tickers = [
 def get_recent_valid_date(start_date, end_date):
     while end_date.weekday() >= 5:  # Skip weekends
         end_date -= pd.Timedelta(days=1)
-    
     # Adjust this function if you have a list of holidays
-    # For example, if you have a list of holidays, add a check to exclude them
     return end_date
 
 # Streamlit UI
@@ -111,47 +109,75 @@ if st.button('Obtener Datos y Graficar'):
                 name=f'{main_stock} / {stock} {name_suffix}'
             ))
 
-            # If only one additional ticker is selected, show the SMA
+            # If only one additional ticker is selected, show the SMA and histogram
             if len(extra_stocks) == 1:
-                # Add SMA period input
-                sma_period = st.number_input('Periodo del SMA (solo si un ticker adicional está seleccionado):', min_value=1, value=20)
+                # SMA input
+                sma_period = st.number_input('Periodo de SMA', min_value=1, value=20)
 
-                # Calculate and plot SMA
+                # Calculate SMA
                 sma = ratio.rolling(window=sma_period).mean()
-                fig.add_trace(go.Scatter(
+
+                # Create figure with SMA
+                fig_sma = go.Figure()
+                fig_sma.add_trace(go.Scatter(
                     x=ratio.index,
+                    y=ratio,
+                    mode='lines',
+                    name=f'{main_stock} / {stock}'
+                ))
+                fig_sma.add_trace(go.Scatter(
+                    x=sma.index,
                     y=sma,
                     mode='lines',
-                    name=f'SMA {sma_period} días',
-                    line=dict(color='orange', width=2)
+                    name=f'SMA {sma_period}',
+                    line=dict(color='orange')
                 ))
-
-                # Calculate and plot histogram of dispersion
+                
+                fig_sma.update_layout(
+                    title=f'Ratio de {main_stock} con {stock} y SMA ({sma_period} días)',
+                    xaxis_title='Fecha',
+                    yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
+                    xaxis_rangeslider_visible=False,
+                    yaxis=dict(showgrid=True),
+                    xaxis=dict(showgrid=True)
+                )
+                
+                st.plotly_chart(fig_sma, use_container_width=True)
+                
+                # Histogram of dispersion
                 dispersion = ratio - sma
-                fig2 = go.Figure()
-
-                fig2.add_trace(go.Histogram(
+                dispersion = dispersion.dropna()
+                
+                fig_hist = go.Figure()
+                fig_hist.add_trace(go.Histogram(
                     x=dispersion,
                     nbinsx=50,
-                    marker_color='blue'
+                    marker=dict(color='lightblue')
                 ))
-
-                # Calculate and display max and min dispersion
-                max_dispersion = dispersion.max()
-                min_dispersion = dispersion.min()
-                fig2.update_layout(
+                fig_hist.update_layout(
                     title='Histograma de Dispersión',
                     xaxis_title='Dispersión',
                     yaxis_title='Frecuencia',
-                    annotations=[
-                        dict(
-                            x=max_dispersion, y=0,
-                            xref='x', yref='y',
-                            text=f'Máx: {max_dispersion:.2f}',
-                            showarrow=True,
-                            arrowhead=2,
-                            ax=0,
-                            ay=-40
-                        ),
-                        dict(
-                            x=min_dispersion
+                    xaxis=dict(showgrid=True),
+                    yaxis=dict(showgrid=True)
+                )
+
+                # Max and Min dispersion
+                max_dispersion = dispersion.max()
+                min_dispersion = dispersion.min()
+                st.write(f"Dispersión Máxima: {max_dispersion:.2f}")
+                st.write(f"Dispersión Mínima: {min_dispersion:.2f}")
+                
+                st.plotly_chart(fig_hist, use_container_width=True)
+
+        fig.update_layout(
+            title=f'Ratios de {main_stock} con activos seleccionados',
+            xaxis_title='Fecha',
+            yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
+            xaxis_rangeslider_visible=False,
+            yaxis=dict(showgrid=True),
+            xaxis=dict(showgrid=True)
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
