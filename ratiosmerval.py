@@ -77,14 +77,14 @@ if st.button('Obtener Datos y Graficar'):
             data.columns = [main_stock] + extra_stocks
         else:
             st.error("Error: `data` is neither a DataFrame nor a Series.")
-            return
-
+            st.stop()  # Stop Streamlit execution
         # Fill missing data with the last available value
         data.fillna(method='ffill', inplace=True)
 
         # Check if main stock exists in data
         if main_stock not in data.columns:
             st.error(f"No se encontró el ticker principal '{main_stock}' en los datos.")
+            st.stop()  # Stop Streamlit execution
         else:
             # Plot setup
             fig = go.Figure()
@@ -187,7 +187,7 @@ if st.button('Obtener Datos y Graficar'):
                         fig_hist.add_shape(
                             type="line",
                             x0=value, y0=0, x1=value, y1=dispersion.max(),
-                            line=dict(color='blue', dash='dash'),  # You can use different colors for different percentiles if desired
+                            line=dict(color="red", dash="dash"),
                             xref="x", yref="y"
                         )
                         fig_hist.add_annotation(
