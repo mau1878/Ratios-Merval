@@ -111,8 +111,25 @@ if st.button('Obtener Datos y Graficar'):
                 name=f'{main_stock} / {stock} {name_suffix}'
             ))
 
-            # Add horizontal line at 0% for percentages view
-            if view_as_percentages:
+            # If only one additional ticker is selected, show the average ratio line
+            if len(extra_stocks) == 1:
+                avg_ratio = ratio.mean()
+                fig.add_shape(
+                    type="line",
+                    x0=ratio.index.min(), y0=avg_ratio, x1=ratio.index.max(), y1=avg_ratio,
+                    line=dict(color="blue", dash="dash"),
+                    xref="x", yref="y"
+                )
+                fig.add_annotation(
+                    x=ratio.index.max(), y=avg_ratio,
+                    text=f'Promedio: {avg_ratio:.2f}',
+                    showarrow=False,
+                    yshift=10,
+                    xanchor="left"
+                )
+
+            elif view_as_percentages:
+                # Add horizontal line at 0% for percentages view
                 fig.add_shape(
                     type="line",
                     x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
