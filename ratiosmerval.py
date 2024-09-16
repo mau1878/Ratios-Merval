@@ -46,7 +46,7 @@ with st.sidebar:
     )
 
     # Date inputs
-    start_date = st.date_input("Fecha de inicio", pd.to_datetime("2023-01-01"))
+    start_date = st.date_input("Fecha de inicio", pd.to_datetime("1980-01-01"))
     end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"))
 
     # Determine the most recent valid date for the reference date
