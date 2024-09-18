@@ -46,8 +46,11 @@ with st.sidebar:
     )
 
     # Date inputs
-    start_date = st.date_input("Fecha de inicio", pd.to_datetime("1980-01-01"))
-    end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"))
+# Set the maximum selectable date to September 2024
+    max_start_date = pd.to_datetime("2024-09-30")
+
+    start_date = st.date_input("Fecha de inicio", pd.to_datetime("1980-01-01"), max_value=max_start_date)
+    end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"), min_value=start_date)
 
     # Determine the most recent valid date for the reference date
     today = pd.to_datetime("today")
