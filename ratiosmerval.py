@@ -116,15 +116,17 @@ if st.button('Obtener Datos y Graficar'):
                 ratio = data[main_stock] / data[stock]
                 
                 if view_as_percentages:
-                    reference_date = pd.Timestamp(reference_date)
-
+                    # Ensure reference_date and ratio index are timezone-naive
+                    reference_date = pd.Timestamp(reference_date).normalize()
+                    ratio.index = ratio.index.normalize()  # Convert ratio index to timezone-naive
+                
                     # Find the nearest available date to the reference_date
                     if reference_date not in ratio.index:
                         differences = abs(ratio.index - reference_date)
                         closest_date = ratio.index[differences.argmin()]
                         reference_date = closest_date
                         st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date.date()}")
-
+                
                     reference_value = ratio.loc[reference_date]
                     ratio = (ratio / reference_value - 1) * 100
                     name_suffix = f"({reference_value:.2f})"
