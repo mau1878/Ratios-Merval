@@ -52,10 +52,17 @@ with st.sidebar:
     start_date = st.date_input("Fecha de inicio", pd.to_datetime("1980-01-01"), max_value=max_start_date)
     end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"), min_value=start_date)
 
+    # Ensure start_date and end_date are timezone-naive
+    start_date = pd.Timestamp(start_date).normalize()
+    end_date = pd.Timestamp(end_date).normalize()
+
     # Determine the most recent valid date for the reference date
-    today = pd.to_datetime("today")
+    today = pd.Timestamp("today").normalize()  # Make `today` timezone-naive
     most_recent_valid_date = get_recent_valid_date(start_date, today)
     reference_date = st.date_input("Fecha de referencia para visualizar como porcentajes:", most_recent_valid_date)
+
+    # Ensure reference_date is timezone-naive
+    reference_date = pd.Timestamp(reference_date).normalize()
 
     # Checkbox to choose percentage view
     view_as_percentages = st.checkbox('Ver como porcentajes en vez de ratios')
@@ -226,7 +233,14 @@ if st.button('Obtener Datos y Graficar'):
                 yaxis=dict(showgrid=True),
                 xaxis=dict(showgrid=True)
             )
-            
+            fig.add_annotation(
+                text="MTaurus - Twitter/X: MTaurus_ok",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=20, color="rgba(150, 150, 150, 0.4)"),
+                xanchor="center", yanchor="middle",
+                opacity=0.3
+            )            
             st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"Se produjo un error: {e}")
