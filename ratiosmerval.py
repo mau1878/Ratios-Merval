@@ -226,7 +226,14 @@ if st.button('Obtener Datos y Graficar'):
                 yaxis=dict(showgrid=True),
                 xaxis=dict(showgrid=True)
             )
-            
+            fig.add_annotation(
+                text="MTaurus - Twitter/X: MTaurus_ok",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=20, color="rgba(150, 150, 150, 0.4)"),
+                xanchor="center", yanchor="middle",
+                opacity=0.3
+            )            
             st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"Se produjo un error: {e}")
