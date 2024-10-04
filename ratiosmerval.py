@@ -19,7 +19,6 @@ tickers = [
 def get_recent_valid_date(start_date, end_date):
   while end_date.weekday() >= 5:  # Skip weekends
       end_date -= pd.Timedelta(days=1)
-  # Adjust this function if you have a list of holidays
   return end_date
 
 # Streamlit UI
@@ -46,9 +45,7 @@ with st.sidebar:
   )
 
   # Date inputs
-  # Set the maximum selectable date to September 2024
   max_start_date = pd.to_datetime("2024-09-30")
-
   start_date = st.date_input("Fecha de inicio", pd.to_datetime("1980-01-01"), max_value=max_start_date)
   end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"), min_value=start_date)
 
@@ -57,7 +54,7 @@ with st.sidebar:
   end_date = pd.Timestamp(end_date).normalize()
 
   # Determine the most recent valid date for the reference date
-  today = pd.Timestamp("today").normalize()  # Make `today` timezone-naive
+  today = pd.Timestamp("today").normalize()
   most_recent_valid_date = get_recent_valid_date(start_date, today)
   reference_date = st.date_input("Fecha de referencia para visualizar como porcentajes:", most_recent_valid_date)
 
@@ -69,6 +66,12 @@ with st.sidebar:
 
   # SMA input field
   sma_period = st.number_input('Periodo de SMA', min_value=1, value=20, key='sma_period')
+
+  # Selection for calculation method
+  calculation_method = st.selectbox(
+      'Seleccionar método de cálculo:',
+      options=['Precio Ratio', 'Precio * Volumen Ratio']
+  )
 
 # Fetch and process data
 if st.button('Obtener Datos y Graficar'):
@@ -83,8 +86,9 @@ if st.button('Obtener Datos y Graficar'):
       # Ensure data is a DataFrame and check for MultiIndex columns
       if isinstance(data, pd.DataFrame):
           if isinstance(data.columns, pd.MultiIndex):
-              # Extract 'Adj Close' data from MultiIndex
+              # Extract 'Adj Close' and 'Volume' data from MultiIndex
               adj_close = pd.DataFrame({ticker: data[ticker]['Adj Close'] for ticker in data.columns.levels[0]})
+              volume = pd.DataFrame({ticker: data[ticker]['Volume'] for ticker in data.columns.levels[0]})
               data = adj_close
           elif 'Adj Close' in data.columns:
               data = data['Adj Close']
@@ -98,7 +102,7 @@ if st.button('Obtener Datos y Graficar'):
           st.error("Error: `data` es ni DataFrame ni Series.")
           st.stop()  # Stop Streamlit execution
 
-      # **Eliminar información de zona horaria del índice de fechas**
+      # Remove timezone information from the date index
       if data.index.tz:
           data.index = data.index.tz_localize(None)
 
@@ -117,7 +121,11 @@ if st.button('Obtener Datos y Graficar'):
                   st.warning(f"No se encontró el ticker '{stock}' en los datos.")
                   continue
               
-              ratio = data[main_stock] / data[stock]
+              # Calculate ratio based on the selected method
+              if calculation_method == 'Precio * Volumen Ratio':
+                  ratio = (data[main_stock] * data[main_stock]['Volume']) / (data[stock] * data[stock]['Volume'])
+              else:  # Default to 'Precio Ratio'
+                  ratio = data[main_stock] / data[stock]
               
               if view_as_percentages:
                   # Ensure reference_date and ratio index are timezone-naive
