@@ -218,7 +218,7 @@ if st.button('Obtener Datos y Graficar'):
                       fig_hist.add_shape(
                           type="line",
                           x0=value, y0=0, x1=value, y1=dispersion.max() * 0.95,
-                          line=dict(color="red", dash="dash"),
+                          line=dict(color="red", dash="dot"),
                           xref="x", yref="y"
                       )
                       fig_hist.add_annotation(
