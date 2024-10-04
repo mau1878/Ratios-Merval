@@ -129,10 +129,22 @@ if st.button('Obtener Datos y Graficar'):
 
               # Calculate ratio based on the selected method
               if calculation_method == 'Precio * Volumen Ratio':
-                  ratio = (data[main_stock] * volume[main_stock]) / (data[stock] * volume[stock])
+                  # Ensure both price and volume indices are timezone-naive
+                  price_main = data[main_stock]
+                  price_stock = data[stock]
+                  volume_main = volume[main_stock]
+                  volume_stock = volume[stock]
+
+                  # Ensure all indices are timezone-naive
+                  price_main.index = price_main.index.tz_localize(None)
+                  price_stock.index = price_stock.index.tz_localize(None)
+                  volume_main.index = volume_main.index.tz_localize(None)
+                  volume_stock.index = volume_stock.index.tz_localize(None)
+
+                  ratio = (price_main * volume_main) / (price_stock * volume_stock)
               else:  # Default to 'Precio Ratio'
                   ratio = data[main_stock] / data[stock]
-              
+
               # Ensure the ratio index is timezone-naive
               ratio.index = ratio.index.tz_localize(None)
 
