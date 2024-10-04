@@ -46,7 +46,7 @@ with st.sidebar:
   )
 
   # Date inputs
-# Set the maximum selectable date to September 2024
+  # Set the maximum selectable date to September 2024
   max_start_date = pd.to_datetime("2024-09-30")
 
   start_date = st.date_input("Fecha de inicio", pd.to_datetime("1980-01-01"), max_value=max_start_date)
@@ -140,6 +140,14 @@ if st.button('Obtener Datos y Graficar'):
                       type="line",
                       x0=reference_date, y0=ratio.min(), x1=reference_date, y1=ratio.max(),
                       line=dict(color="yellow", dash="dash"),
+                      xref="x", yref="y"
+                  )
+                  
+                  # Add a thin red line across zero in the Y-axis
+                  fig.add_shape(
+                      type="line",
+                      x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
+                      line=dict(color="red", width=1),  # Thin red line
                       xref="x", yref="y"
                   )
               else:
