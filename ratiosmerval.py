@@ -133,6 +133,9 @@ if st.button('Obtener Datos y Graficar'):
               else:  # Default to 'Precio Ratio'
                   ratio = data[main_stock] / data[stock]
               
+              # Ensure the ratio index is timezone-naive
+              ratio.index = ratio.index.tz_localize(None)
+
               if view_as_percentages:
                   # Ensure reference_date and ratio index are timezone-naive
                   reference_date = pd.Timestamp(reference_date).normalize()
