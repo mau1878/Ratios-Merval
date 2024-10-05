@@ -141,7 +141,7 @@ if st.button('Obtener Datos y Graficar'):
                   volume_main.index = volume_main.index.tz_localize(None)
                   volume_stock.index = volume_stock.index.tz_localize(None)
 
-                  ratio = (volume_main) / (volume_stock)
+                  ratio = (price_main * volume_main) / (price_stock * volume_stock)
               else:  # Default to 'Precio Ratio'
                   ratio = data[main_stock] / data[stock]
 
