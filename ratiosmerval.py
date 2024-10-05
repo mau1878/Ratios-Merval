@@ -136,6 +136,13 @@ if st.button('Obtener Datos y Graficar'):
                   price_stock = data[stock]
                   volume_main = volume[main_stock]
                   volume_stock = volume[stock]
+
+                  # Ensure all indices are timezone-naive
+                  price_main.index = price_main.index.tz_localize(None)
+                  price_stock.index = price_stock.index.tz_localize(None)
+                  volume_main.index = volume_main.index.tz_localize(None)
+                  volume_stock.index = volume_stock.index.tz_localize(None)
+
                   ratio = (price_main * volume_main) / (price_stock * volume_stock)
               else:  # Default to 'Precio Ratio'
                   ratio = data[main_stock] / data[stock]
@@ -194,7 +201,7 @@ if st.button('Obtener Datos y Graficar'):
                   y=sma,
                   mode='lines',
                   name=f'SMA {sma_period} {main_stock} / {stock}',
-                  line=dict(color=colors[idx % len(colors)])  # Cycle through colors
+                  line=dict(color=colors[idx % len(colors)])  # Unique color for SMA
               ))
 
               # If only one additional ticker is selected, show the SMA and histogram
