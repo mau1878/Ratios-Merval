@@ -116,7 +116,10 @@ if st.button('Obtener Datos y Graficar'):
       else:
           # Plot setup
           fig = go.Figure()
-          for stock in extra_stocks:
+          # Define a list of colors for the SMAs
+          colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'brown']
+
+          for idx, stock in enumerate(extra_stocks):
               if stock not in data.columns:
                   st.warning(f"No se encontró el ticker '{stock}' en los datos.")
                   continue
@@ -185,13 +188,13 @@ if st.button('Obtener Datos y Graficar'):
                   name=f'{main_stock} / {stock} {name_suffix}'
               ))
 
-              # Add the SMA trace to the main figure
+              # Add the SMA trace to the main figure with a unique color
               fig.add_trace(go.Scatter(
                   x=sma.index,
                   y=sma,
                   mode='lines',
                   name=f'SMA {sma_period} {main_stock} / {stock}',
-                  line=dict(color='orange')
+                  line=dict(color=colors[idx % len(colors)])  # Cycle through colors
               ))
 
               # If only one additional ticker is selected, show the SMA and histogram
@@ -209,7 +212,7 @@ if st.button('Obtener Datos y Graficar'):
                       y=sma,
                       mode='lines',
                       name=f'SMA {sma_period}',
-                      line=dict(color='orange')
+                      line=dict(color=colors[idx % len(colors)])  # Unique color for SMA
                   ))
                   
                   # Average value line
