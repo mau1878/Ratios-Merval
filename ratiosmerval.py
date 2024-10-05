@@ -129,18 +129,10 @@ if st.button('Obtener Datos y Graficar'):
 
               # Calculate ratio based on the selected method
               if calculation_method == 'Precio * Volumen Ratio':
-                  # Ensure both price and volume indices are timezone-naive
                   price_main = data[main_stock]
                   price_stock = data[stock]
                   volume_main = volume[main_stock]
                   volume_stock = volume[stock]
-
-                  # Ensure all indices are timezone-naive
-                  price_main.index = price_main.index.tz_localize(None)
-                  price_stock.index = price_stock.index.tz_localize(None)
-                  volume_main.index = volume_main.index.tz_localize(None)
-                  volume_stock.index = volume_stock.index.tz_localize(None)
-
                   ratio = (price_main * volume_main) / (price_stock * volume_stock)
               else:  # Default to 'Precio Ratio'
                   ratio = data[main_stock] / data[stock]
@@ -152,14 +144,14 @@ if st.button('Obtener Datos y Graficar'):
                   # Ensure reference_date and ratio index are timezone-naive
                   reference_date = pd.Timestamp(reference_date).normalize()
                   ratio.index = ratio.index.normalize()  # Convert ratio index to timezone-naive
-              
+                  
                   # Find the nearest available date to the reference_date
                   if reference_date not in ratio.index:
                       differences = abs(ratio.index - reference_date)
                       closest_date = ratio.index[differences.argmin()]
                       reference_date = closest_date
                       st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date.date()}")
-              
+                  
                   reference_value = ratio.loc[reference_date]
                   ratio = (ratio / reference_value - 1) * 100
                   name_suffix = f"({reference_value:.2f})"
@@ -182,6 +174,10 @@ if st.button('Obtener Datos y Graficar'):
               else:
                   name_suffix = ""
 
+              # Calculate SMA
+              sma = ratio.rolling(window=sma_period).mean()
+
+              # Add the ratio trace to the main figure
               fig.add_trace(go.Scatter(
                   x=ratio.index,
                   y=ratio,
@@ -189,11 +185,17 @@ if st.button('Obtener Datos y Graficar'):
                   name=f'{main_stock} / {stock} {name_suffix}'
               ))
 
+              # Add the SMA trace to the main figure
+              fig.add_trace(go.Scatter(
+                  x=sma.index,
+                  y=sma,
+                  mode='lines',
+                  name=f'SMA {sma_period} {main_stock} / {stock}',
+                  line=dict(color='orange')
+              ))
+
               # If only one additional ticker is selected, show the SMA and histogram
               if len(extra_stocks) == 1:
-                  # Calculate SMA
-                  sma = ratio.rolling(window=sma_period).mean()
-
                   # Create figure with SMA
                   fig_sma = go.Figure()
                   fig_sma.add_trace(go.Scatter(
