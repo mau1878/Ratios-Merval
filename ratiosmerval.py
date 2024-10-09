@@ -6,13 +6,13 @@ import plotly.graph_objects as go
 
 # Predefined tickers list
 tickers = [
-  "GGAL.BA", "YPFD.BA", "PAMP.BA", "TXAR.BA", "ALUA.BA", "CRES.BA", "SUPV.BA", "CEPU.BA", "BMA.BA", 
-  "TGSU2.BA", "TRAN.BA", "EDN.BA", "LOMA.BA", "MIRG.BA", "DGCU2.BA", "BBAR.BA", "MOLI.BA", "TGNO4.BA", 
-  "CGPA2.BA", "COME.BA", "IRSA.BA", "BYMA.BA", "TECO2.BA", "METR.BA", "CECO2.BA", "BHIP.BA", "AGRO.BA", 
-  "LEDE.BA", "CVH.BA", "HAVA.BA", "AUSO.BA", "VALO.BA", "SEMI.BA", "INVJ.BA", "CTIO.BA", "MORI.BA", 
-  "HARG.BA", "GCLA.BA", "SAMI.BA", "BOLT.BA", "MOLA.BA", "CAPX.BA", "OEST.BA", "LONG.BA", "GCDI.BA", 
-  "GBAN.BA", "CELU.BA", "FERR.BA", "CADO.BA", "GAMI.BA", "PATA.BA", "CARC.BA", "BPAT.BA", "RICH.BA", 
-  "INTR.BA", "GARO.BA", "FIPL.BA", "GRIM.BA", "DYCA.BA", "POLL.BA", "DOME.BA", "ROSE.BA", "MTR.BA"
+"GGAL.BA", "YPFD.BA", "PAMP.BA", "TXAR.BA", "ALUA.BA", "CRES.BA", "SUPV.BA", "CEPU.BA", "BMA.BA", 
+"TGSU2.BA", "TRAN.BA", "EDN.BA", "LOMA.BA", "MIRG.BA", "DGCU2.BA", "BBAR.BA", "MOLI.BA", "TGNO4.BA", 
+"CGPA2.BA", "COME.BA", "IRSA.BA", "BYMA.BA", "TECO2.BA", "METR.BA", "CECO2.BA", "BHIP.BA", "AGRO.BA", 
+"LEDE.BA", "CVH.BA", "HAVA.BA", "AUSO.BA", "VALO.BA", "SEMI.BA", "INVJ.BA", "CTIO.BA", "MORI.BA", 
+"HARG.BA", "GCLA.BA", "SAMI.BA", "BOLT.BA", "MOLA.BA", "CAPX.BA", "OEST.BA", "LONG.BA", "GCDI.BA", 
+"GBAN.BA", "CELU.BA", "FERR.BA", "CADO.BA", "GAMI.BA", "PATA.BA", "CARC.BA", "BPAT.BA", "RICH.BA", 
+"INTR.BA", "GARO.BA", "FIPL.BA", "GRIM.BA", "DYCA.BA", "POLL.BA", "DOME.BA", "ROSE.BA", "MTR.BA"
 ]
 
 # Helper function to find the most recent valid trading date
@@ -37,7 +37,7 @@ with st.sidebar:
   # Additional tickers selection
   extra_stocks_input = st.text_input('Ingresar manualmente tickers adicionales (separados por comas):', '').upper()
   extra_stocks_manual = [ticker.strip() for ticker in extra_stocks_input.split(',') if ticker.strip()]
-  extra_stocks_options = extra_stocks_manual + tickers
+  extra_stocks_options = list(set(extra_stocks_manual + tickers))  # Eliminar duplicados
   extra_stocks = st.multiselect(
       'Seleccionar hasta 6 tickers adicionales:',
       options=extra_stocks_options,
@@ -76,183 +76,193 @@ with st.sidebar:
 # Fetch and process data
 if st.button('Obtener Datos y Graficar'):
   try:
+      # Combinar el main_stock y extra_stocks para descargar todos juntos
+      all_tickers = list(set([main_stock] + extra_stocks))  # Eliminar duplicados
+
       # Fetch data
-      data = yf.download([main_stock] + extra_stocks, start=start_date, end=end_date, group_by='ticker')
+      data = yf.download(all_tickers, start=start_date, end=end_date, group_by='ticker', auto_adjust=False)
 
       # Debug: Print the structure of `data`
-      st.write("Data structure:", data.head())
-      st.write("Columns available:", data.columns)
+      st.write("Estructura de los datos:", data.head())
+      st.write("Columnas disponibles:", data.columns)
 
-      # Ensure data is a DataFrame and check for MultiIndex columns
-      if isinstance(data, pd.DataFrame):
-          if isinstance(data.columns, pd.MultiIndex):
-              # Extract 'Adj Close' and 'Volume' data from MultiIndex
-              adj_close = pd.DataFrame({ticker: data[ticker]['Adj Close'] for ticker in data.columns.levels[0]})
-              volume = pd.DataFrame({ticker: data[ticker]['Volume'] for ticker in data.columns.levels[0]})
-              data = adj_close
-          elif 'Adj Close' in data.columns:
-              data = data['Adj Close']
+      # Check if data is MultiIndex
+      if isinstance(data, pd.DataFrame) and isinstance(data.columns, pd.MultiIndex):
+          # Extract 'Adj Close' and 'Volume' data from MultiIndex
+          adj_close = pd.DataFrame({ticker: data[ticker]['Adj Close'] for ticker in all_tickers if (ticker, 'Adj Close') in data.columns})
+          volume = pd.DataFrame({ticker: data[ticker]['Volume'] for ticker in all_tickers if (ticker, 'Volume') in data.columns})
+      elif isinstance(data, pd.DataFrame):
+          if 'Adj Close' in data.columns and 'Volume' in data.columns:
+              adj_close = data['Adj Close']
+              volume = data['Volume']
           else:
-              st.error("Error: 'Adj Close' column not found in data.")
+              st.error("Error: No se encontraron las columnas 'Adj Close' y 'Volume' en los datos descargados.")
               st.stop()
-      elif isinstance(data, pd.Series):
-          data = pd.DataFrame(data).T
-          data.columns = [main_stock] + extra_stocks
       else:
-          st.error("Error: `data` es ni DataFrame ni Series.")
-          st.stop()  # Stop Streamlit execution
+          st.error("Error: `data` no es un DataFrame válido.")
+          st.stop()
 
-      # Remove timezone information from the date index
-      if data.index.tz:
-          data.index = data.index.tz_localize(None)
+      # Empezar el manejo de datos faltantes
+      # Alinear las fechas
+      common_dates = adj_close.index.intersection(volume.index)
+      adj_close = adj_close.loc[common_dates].fillna(method='ffill').fillna(method='bfill')
+      volume = volume.loc[common_dates].fillna(method='ffill').fillna(method='bfill')
 
-      # Fill missing data with the last available value
-      data.ffill(inplace=True)
+      # Informar si se han perdido fechas
+      if len(common_dates) < len(adj_close):
+          st.info(f"Se han alineado las fechas a las {len(common_dates)} fechas comunes disponibles entre 'Adj Close' y 'Volume'.")
+
+      # Asegurar que el índice esté libre de timezone
+      if adj_close.index.tz:
+          adj_close.index = adj_close.index.tz_localize(None)
+      if volume.index.tz:
+          volume.index = volume.index.tz_localize(None)
 
       # Check if main stock exists in data
-      if main_stock not in data.columns:
-          st.error(f"No se encontró el ticker principal '{main_stock}' en los datos.")
-          st.stop()  # Stop Streamlit execution
-      else:
-          # Plot setup
-          fig = go.Figure()
-          # Define a list of colors for the SMAs
-          colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'brown']
+      if main_stock not in adj_close.columns:
+          st.error(f"No se encontró el ticker principal '{main_stock}' en los datos de 'Adj Close'.")
+          st.stop()
 
-          for idx, stock in enumerate(extra_stocks):
-              if stock not in data.columns:
-                  st.warning(f"No se encontró el ticker '{stock}' en los datos.")
-                  continue
-              
-              # Check if volume data is available for the stock
-              if calculation_method == 'Precio * Volumen Ratio':
-                  if stock not in volume.columns:
-                      st.warning(f"No se encontró la columna 'Volume' para el ticker '{stock}'. Usando solo el Precio Ratio.")
-                      calculation_method = 'Precio Ratio'  # Fallback to Precio Ratio if Volume is not available
+      # Plot setup
+      fig = go.Figure()
+      # Define a list de colores para las SMAs
+      colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'brown']
 
-              # Calculate ratio based on the selected method
-              if calculation_method == 'Precio * Volumen Ratio':
-                  price_main = data[main_stock]
-                  price_stock = data[stock]
-                  volume_main = volume[main_stock]
-                  volume_stock = volume[stock]
+      for idx, stock in enumerate(extra_stocks):
+          if stock not in adj_close.columns:
+              st.warning(f"No se encontró el ticker '{stock}' en los datos de 'Adj Close'.")
+              continue
 
-                  # Ensure all indices are timezone-naive
-                  price_main.index = price_main.index.tz_localize(None)
-                  price_stock.index = price_stock.index.tz_localize(None)
-                  volume_main.index = volume_main.index.tz_localize(None)
-                  volume_stock.index = volume_stock.index.tz_localize(None)
+          # Variable local para determinar el método de cálculo para este ticker
+          local_calculation_method = calculation_method
 
-                  ratio = (price_main * volume_main) / (price_stock * volume_stock)
-              else:  # Default to 'Precio Ratio'
-                  ratio = data[main_stock] / data[stock]
+          # Check if volume data is available for the main stock and the current stock
+          if calculation_method == 'Precio * Volumen Ratio':
+              if (main_stock not in volume.columns) or (stock not in volume.columns):
+                  st.warning(f"No se encontraron datos de 'Volume' para '{stock}' o '{main_stock}'. Usando 'Precio Ratio' para este ticker.")
+                  local_calculation_method = 'Precio Ratio'  # Fallback solo para este ticker
 
-              # Ensure the ratio index is timezone-naive
-              ratio.index = ratio.index.tz_localize(None)
+          # Calcula el ratio basado en el método seleccionado localmente
+          if local_calculation_method == 'Precio * Volumen Ratio':
+              price_main = adj_close[main_stock]
+              price_stock = adj_close[stock]
+              volume_main = volume[main_stock]
+              volume_stock = volume[stock]
 
-              if view_as_percentages:
-                  # Ensure reference_date and ratio index are timezone-naive
-                  reference_date = pd.Timestamp(reference_date).normalize()
-                  ratio.index = ratio.index.normalize()  # Convert ratio index to timezone-naive
-                  
-                  # Find the nearest available date to the reference_date
-                  if reference_date not in ratio.index:
-                      differences = abs(ratio.index - reference_date)
-                      closest_date = ratio.index[differences.argmin()]
-                      reference_date = closest_date
-                      st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date.date()}")
-                  
-                  reference_value = ratio.loc[reference_date]
-                  ratio = (ratio / reference_value - 1) * 100
-                  name_suffix = f"({reference_value:.2f})"
-                  
-                  # Add vertical reference line
-                  fig.add_shape(
-                      type="line",
-                      x0=reference_date, y0=ratio.min(), x1=reference_date, y1=ratio.max(),
-                      line=dict(color="yellow", dash="dash"),
-                      xref="x", yref="y"
-                  )
-                  
-                  # Add a thin red line across zero in the Y-axis
-                  fig.add_shape(
-                      type="line",
-                      x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
-                      line=dict(color="red", width=1),  # Thin red line
-                      xref="x", yref="y"
-                  )
+              ratio = (price_main * volume_main) / (price_stock * volume_stock)
+          else:  # Default to 'Precio Ratio'
+              ratio = adj_close[main_stock] / adj_close[stock]
+
+          # Manejar posibles NaNs resultantes del cálculo
+          ratio = ratio.fillna(method='ffill').fillna(method='bfill')
+
+          if view_as_percentages:
+              # Asegurar que reference_date esté en el índice
+              if reference_date not in ratio.index:
+                  differences = abs(ratio.index - reference_date)
+                  closest_date = ratio.index[differences.argmin()]
+                  reference_date_adj = closest_date
+                  st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date_adj.date()}")
               else:
-                  name_suffix = ""
+                  reference_date_adj = reference_date
 
+              reference_value = ratio.loc[reference_date_adj]
+              ratio = (ratio / reference_value - 1) * 100
+              name_suffix = f"({reference_value:.2f})"
+
+              # Add vertical reference line
+              fig.add_shape(
+                  type="line",
+                  x0=reference_date_adj, y0=ratio.min(), x1=reference_date_adj, y1=ratio.max(),
+                  line=dict(color="yellow", dash="dash"),
+                  xref="x", yref="y"
+              )
+
+              # Add a thin red line across zero in the Y-axis
+              fig.add_shape(
+                  type="line",
+                  x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
+                  line=dict(color="red", width=1),
+                  xref="x", yref="y"
+              )
+          else:
+              name_suffix = ""
+
+          # Verificar si hay suficientes datos para calcular la SMA
+          if len(ratio) < sma_period:
+              st.warning(f"No hay suficientes datos para calcular la SMA de {sma_period} días para el ticker '{stock}'.")
+              sma = pd.Series([np.nan]*len(ratio), index=ratio.index)
+          else:
               # Calculate SMA
               sma = ratio.rolling(window=sma_period).mean()
 
-              # Add the ratio trace to the main figure
-              fig.add_trace(go.Scatter(
+          # Agregar el ratio al gráfico principal
+          fig.add_trace(go.Scatter(
+              x=ratio.index,
+              y=ratio,
+              mode='lines',
+              name=f'{main_stock} / {stock} {name_suffix}'
+          ))
+
+          # Agregar la SMA al gráfico principal con color único
+          fig.add_trace(go.Scatter(
+              x=sma.index,
+              y=sma,
+              mode='lines',
+              name=f'SMA {sma_period} {main_stock} / {stock}',
+              line=dict(color=colors[idx % len(colors)], dash='dot')
+          ))
+
+          # Si se selecciona solo un ticker adicional, mostrar SMA y histograma
+          if len(extra_stocks) == 1:
+              # Crear figura con SMA
+              fig_sma = go.Figure()
+              fig_sma.add_trace(go.Scatter(
                   x=ratio.index,
                   y=ratio,
                   mode='lines',
-                  name=f'{main_stock} / {stock} {name_suffix}'
+                  name=f'{main_stock} / {stock}'
               ))
-
-              # Add the SMA trace to the main figure with a unique color
-              fig.add_trace(go.Scatter(
+              fig_sma.add_trace(go.Scatter(
                   x=sma.index,
                   y=sma,
                   mode='lines',
-                  name=f'SMA {sma_period} {main_stock} / {stock}',
-                  line=dict(color=colors[idx % len(colors)])  # Unique color for SMA
+                  name=f'SMA {sma_period}',
+                  line=dict(color=colors[idx % len(colors)], dash='dot')
               ))
 
-              # If only one additional ticker is selected, show the SMA and histogram
-              if len(extra_stocks) == 1:
-                  # Create figure with SMA
-                  fig_sma = go.Figure()
-                  fig_sma.add_trace(go.Scatter(
-                      x=ratio.index,
-                      y=ratio,
-                      mode='lines',
-                      name=f'{main_stock} / {stock}'
-                  ))
-                  fig_sma.add_trace(go.Scatter(
-                      x=sma.index,
-                      y=sma,
-                      mode='lines',
-                      name=f'SMA {sma_period}',
-                      line=dict(color=colors[idx % len(colors)])  # Unique color for SMA
-                  ))
-                  
-                  # Average value line
-                  average_value = ratio.mean()
-                  fig_sma.add_trace(go.Scatter(
-                      x=[ratio.index.min(), ratio.index.max()],
-                      y=[average_value, average_value],
-                      mode='lines',
-                      name=f'Promedio ({average_value:.2f})',
-                      line=dict(color='purple', dash='dot')
-                  ))
-                  
-                  fig_sma.update_layout(
-                      title=f'Ratio de {main_stock} con {stock} y SMA ({sma_period} días)',
-                      xaxis_title='Fecha',
-                      yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
-                      xaxis_rangeslider_visible=False,
-                      yaxis=dict(showgrid=True),
-                      xaxis=dict(showgrid=True)
-                  )
-                  
-                  st.plotly_chart(fig_sma, use_container_width=True)
-                  
-                  # Histogram of dispersion
-                  dispersion = ratio - sma
-                  dispersion = dispersion.dropna()
-                  
-                  fig_hist = go.Figure()
-                  fig_hist.add_trace(go.Histogram(
-                      x=dispersion,
-                      nbinsx=50
-                  ))
-                  
+              # Average value line
+              average_value = ratio.mean()
+              fig_sma.add_trace(go.Scatter(
+                  x=[ratio.index.min(), ratio.index.max()],
+                  y=[average_value, average_value],
+                  mode='lines',
+                  name=f'Promedio ({average_value:.2f})',
+                  line=dict(color='purple', dash='dot')
+              ))
+
+              fig_sma.update_layout(
+                  title=f'Ratio de {main_stock} con {stock} y SMA ({sma_period} días)',
+                  xaxis_title='Fecha',
+                  yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
+                  xaxis_rangeslider_visible=False,
+                  yaxis=dict(showgrid=True),
+                  xaxis=dict(showgrid=True)
+              )
+
+              st.plotly_chart(fig_sma, use_container_width=True)
+
+              # Histograma de dispersión
+              dispersion = ratio - sma
+              dispersion = dispersion.dropna()
+
+              fig_hist = go.Figure()
+              fig_hist.add_trace(go.Histogram(
+                  x=dispersion,
+                  nbinsx=50
+              ))
+
+              if not dispersion.empty:
                   percentiles = [25, 50, 75]
                   for p in percentiles:
                       value = np.percentile(dispersion, p)
@@ -269,33 +279,33 @@ if st.button('Obtener Datos y Graficar'):
                           arrowhead=2
                       )
 
-                  fig_hist.update_layout(
-                      title='Histograma de Dispersión del Ratio',
-                      xaxis_title='Dispersión',
-                      yaxis_title='Frecuencia',
-                      xaxis=dict(showgrid=True),
-                      yaxis=dict(showgrid=True)
-                  )
-                  
-                  st.plotly_chart(fig_hist, use_container_width=True)
+              fig_hist.update_layout(
+                  title='Histograma de Dispersión del Ratio',
+                  xaxis_title='Dispersión',
+                  yaxis_title='Frecuencia',
+                  xaxis=dict(showgrid=True),
+                  yaxis=dict(showgrid=True)
+              )
 
-          # Update main figure layout
-          fig.update_layout(
-              title='Ratios de Activos',
-              xaxis_title='Fecha',
-              yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
-              xaxis_rangeslider_visible=False,
-              yaxis=dict(showgrid=True),
-              xaxis=dict(showgrid=True)
-          )
-          fig.add_annotation(
-              text="MTaurus - Twitter/X: MTaurus_ok",
-              xref="paper", yref="paper",
-              x=0.5, y=0.5, showarrow=False,
-              font=dict(size=20, color="rgba(150, 150, 150, 0.4)"),
-              xanchor="center", yanchor="middle",
-              opacity=0.3
-          )            
-          st.plotly_chart(fig, use_container_width=True)
+              st.plotly_chart(fig_hist, use_container_width=True)
+
+      # Actualizar el layout del gráfico principal
+      fig.update_layout(
+          title='Ratios de Activos',
+          xaxis_title='Fecha',
+          yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
+          xaxis_rangeslider_visible=False,
+          yaxis=dict(showgrid=True),
+          xaxis=dict(showgrid=True)
+      )
+      fig.add_annotation(
+          text="MTaurus - Twitter/X: MTaurus_ok",
+          xref="paper", yref="paper",
+          x=0.5, y=0.5, showarrow=False,
+          font=dict(size=20, color="rgba(150, 150, 150, 0.4)"),
+          xanchor="center", yanchor="middle",
+          opacity=0.3
+      )
+      st.plotly_chart(fig, use_container_width=True)
   except Exception as e:
       st.error(f"Se produjo un error: {e}")
