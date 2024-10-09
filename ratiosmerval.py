@@ -73,6 +73,15 @@ with st.sidebar:
       options=['Precio Ratio', 'Precio * Volumen Ratio']
   )
 
+  # **Nueva Opción: Escala Logarítmica para el Eje Y**
+  # Esta opción solo está habilitada si 'view_as_percentages' está desactivado,
+  # ya que una escala logarítmica no puede manejar valores negativos o cero.
+  if view_as_percentages:
+      st.info("La escala logarítmica está deshabilitada cuando se visualizan los datos como porcentajes.")
+      use_log_scale = False
+  else:
+      use_log_scale = st.checkbox('Usar escala logarítmica para el eje Y', value=False)
+
 # Fetch and process data
 if st.button('Obtener Datos y Graficar'):
   try:
@@ -92,7 +101,7 @@ if st.button('Obtener Datos y Graficar'):
           adj_close = pd.DataFrame({ticker: data[ticker]['Adj Close'] for ticker in all_tickers if (ticker, 'Adj Close') in data.columns})
           volume = pd.DataFrame({ticker: data[ticker]['Volume'] for ticker in all_tickers if (ticker, 'Volume') in data.columns})
       elif isinstance(data, pd.DataFrame):
-          if 'Adj Close' in data.columns and 'Volume' in data.columns:
+          if ('Adj Close' in data.columns) and ('Volume' in data.columns):
               adj_close = data['Adj Close']
               volume = data['Volume']
           else:
@@ -125,7 +134,7 @@ if st.button('Obtener Datos y Graficar'):
 
       # Plot setup
       fig = go.Figure()
-      # Define a list de colores para las SMAs
+      # Define una lista de colores para las SMAs
       colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'brown']
 
       for idx, stock in enumerate(extra_stocks):
@@ -289,13 +298,16 @@ if st.button('Obtener Datos y Graficar'):
 
               st.plotly_chart(fig_hist, use_container_width=True)
 
+      # **Configuración del Eje Y según la Selección del Usuario**
+      yaxis_type = 'log' if use_log_scale else 'linear'
+
       # Actualizar el layout del gráfico principal
       fig.update_layout(
           title='Ratios de Activos',
           xaxis_title='Fecha',
           yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
           xaxis_rangeslider_visible=False,
-          yaxis=dict(showgrid=True),
+          yaxis=dict(showgrid=True, type=yaxis_type),
           xaxis=dict(showgrid=True)
       )
       fig.add_annotation(
