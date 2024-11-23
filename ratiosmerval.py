@@ -207,106 +207,106 @@ if st.button('Obtener Datos y Graficar'):
 
           # Continue with the rest of your plotting code...
             # Verificar si hay suficientes datos para calcular la SMA
-            if len(ratio) < sma_period:
-                st.warning(
-                    f"No hay suficientes datos para calcular la SMA de {sma_period} días para el ticker '{stock}'.")
-                sma = pd.Series([np.nan] * len(ratio), index=ratio.index)
-            else:
-                # Calculate SMA
-                sma = ratio.rolling(window=sma_period).mean()
+        if len(ratio) < sma_period:
+            st.warning(
+                f"No hay suficientes datos para calcular la SMA de {sma_period} días para el ticker '{stock}'.")
+            sma = pd.Series([np.nan] * len(ratio), index=ratio.index)
+        else:
+            # Calculate SMA
+            sma = ratio.rolling(window=sma_period).mean()
 
-            # Agregar el ratio al gráfico principal
-            fig.add_trace(go.Scatter(
+        # Agregar el ratio al gráfico principal
+        fig.add_trace(go.Scatter(
+            x=ratio.index,
+            y=ratio,
+            mode='lines',
+            name=f'{main_stock} / {stock} {name_suffix}'
+        ))
+
+        # Agregar la SMA al gráfico principal con color único
+        fig.add_trace(go.Scatter(
+            x=sma.index,
+            y=sma,
+            mode='lines',
+            name=f'SMA {sma_period} {main_stock} / {stock}',
+            line=dict(color=colors[idx % len(colors)], dash='dot')
+        ))
+
+        # Si se selecciona solo un ticker adicional, mostrar SMA y histograma
+        if len(extra_stocks) == 1:
+            # Crear figura con SMA
+            fig_sma = go.Figure()
+            fig_sma.add_trace(go.Scatter(
                 x=ratio.index,
                 y=ratio,
                 mode='lines',
-                name=f'{main_stock} / {stock} {name_suffix}'
+                name=f'{main_stock} / {stock}'
             ))
-
-            # Agregar la SMA al gráfico principal con color único
-            fig.add_trace(go.Scatter(
+            fig_sma.add_trace(go.Scatter(
                 x=sma.index,
                 y=sma,
                 mode='lines',
-                name=f'SMA {sma_period} {main_stock} / {stock}',
+                name=f'SMA {sma_period}',
                 line=dict(color=colors[idx % len(colors)], dash='dot')
             ))
 
-            # Si se selecciona solo un ticker adicional, mostrar SMA y histograma
-            if len(extra_stocks) == 1:
-                # Crear figura con SMA
-                fig_sma = go.Figure()
-                fig_sma.add_trace(go.Scatter(
-                    x=ratio.index,
-                    y=ratio,
-                    mode='lines',
-                    name=f'{main_stock} / {stock}'
-                ))
-                fig_sma.add_trace(go.Scatter(
-                    x=sma.index,
-                    y=sma,
-                    mode='lines',
-                    name=f'SMA {sma_period}',
-                    line=dict(color=colors[idx % len(colors)], dash='dot')
-                ))
+            # Average value line
+            average_value = ratio.mean()
+            fig_sma.add_trace(go.Scatter(
+                x=[ratio.index.min(), ratio.index.max()],
+                y=[average_value, average_value],
+                mode='lines',
+                name=f'Promedio ({average_value:.2f})',
+                line=dict(color='purple', dash='dot')
+            ))
 
-                # Average value line
-                average_value = ratio.mean()
-                fig_sma.add_trace(go.Scatter(
-                    x=[ratio.index.min(), ratio.index.max()],
-                    y=[average_value, average_value],
-                    mode='lines',
-                    name=f'Promedio ({average_value:.2f})',
-                    line=dict(color='purple', dash='dot')
-                ))
+            fig_sma.update_layout(
+                title=f'Ratio de {main_stock} con {stock} y SMA ({sma_period} días)',
+                xaxis_title='Fecha',
+                yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
+                xaxis_rangeslider_visible=False,
+                yaxis=dict(showgrid=True),
+                xaxis=dict(showgrid=True)
+            )
 
-                fig_sma.update_layout(
-                    title=f'Ratio de {main_stock} con {stock} y SMA ({sma_period} días)',
-                    xaxis_title='Fecha',
-                    yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
-                    xaxis_rangeslider_visible=False,
-                    yaxis=dict(showgrid=True),
-                    xaxis=dict(showgrid=True)
-                )
+            st.plotly_chart(fig_sma, use_container_width=True)
 
-                st.plotly_chart(fig_sma, use_container_width=True)
+            # Histograma de dispersión
+            dispersion = ratio - sma
+            dispersion = dispersion.dropna()
 
-                # Histograma de dispersión
-                dispersion = ratio - sma
-                dispersion = dispersion.dropna()
+            fig_hist = go.Figure()
+            fig_hist.add_trace(go.Histogram(
+                x=dispersion,
+                nbinsx=50
+            ))
 
-                fig_hist = go.Figure()
-                fig_hist.add_trace(go.Histogram(
-                    x=dispersion,
-                    nbinsx=50
-                ))
+            if not dispersion.empty:
+                percentiles = [25, 50, 75]
+                for p in percentiles:
+                    value = np.percentile(dispersion, p)
+                    fig_hist.add_shape(
+                        type="line",
+                        x0=value, y0=0, x1=value, y1=dispersion.max() * 0.95,
+                        line=dict(color="red", dash="dot"),
+                        xref="x", yref="y"
+                    )
+                    fig_hist.add_annotation(
+                        x=value, y=dispersion.max() * 0.95,
+                        text=f'{p}th Percentile',
+                        showarrow=True,
+                        arrowhead=2
+                    )
 
-                if not dispersion.empty:
-                    percentiles = [25, 50, 75]
-                    for p in percentiles:
-                        value = np.percentile(dispersion, p)
-                        fig_hist.add_shape(
-                            type="line",
-                            x0=value, y0=0, x1=value, y1=dispersion.max() * 0.95,
-                            line=dict(color="red", dash="dot"),
-                            xref="x", yref="y"
-                        )
-                        fig_hist.add_annotation(
-                            x=value, y=dispersion.max() * 0.95,
-                            text=f'{p}th Percentile',
-                            showarrow=True,
-                            arrowhead=2
-                        )
+            fig_hist.update_layout(
+                title='Histograma de Dispersión del Ratio',
+                xaxis_title='Dispersión',
+                yaxis_title='Frecuencia',
+                xaxis=dict(showgrid=True),
+                yaxis=dict(showgrid=True)
+            )
 
-                fig_hist.update_layout(
-                    title='Histograma de Dispersión del Ratio',
-                    xaxis_title='Dispersión',
-                    yaxis_title='Frecuencia',
-                    xaxis=dict(showgrid=True),
-                    yaxis=dict(showgrid=True)
-                )
-
-                st.plotly_chart(fig_hist, use_container_width=True)
+            st.plotly_chart(fig_hist, use_container_width=True)
 
         # **Configuración del Eje Y según la Selección del Usuario**
         yaxis_type = 'log' if use_log_scale else 'linear'
