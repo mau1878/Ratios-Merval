@@ -88,6 +88,7 @@ with st.sidebar:
 # Replace the data processing section with this:
 
 # Fetch and process data
+# Fetch and process data
 if st.button('Obtener Datos y Graficar'):
   try:
       # Combinar el main_stock y extra_stocks para descargar todos juntos
@@ -123,7 +124,14 @@ if st.button('Obtener Datos y Graficar'):
       adj_close.index = adj_close.index.tz_localize(None)
       volume.index = volume.index.tz_localize(None)
 
-      # Instead of filling NaN values, we'll handle them during ratio calculation
+      # Debug information
+      st.write("Estructura de Adj Close:", adj_close.head())
+      st.write("Estructura de Volume:", volume.head())
+
+      # Check if main stock exists in data
+      if main_stock not in adj_close.columns:
+          st.error(f"No se encontró el ticker principal '{main_stock}' en los datos.")
+          st.stop()
 
       # Plot setup
       fig = go.Figure()
@@ -134,6 +142,9 @@ if st.button('Obtener Datos y Graficar'):
               st.warning(f"No se encontró el ticker '{stock}' en los datos de 'Adj Close'.")
               continue
 
+          # Variable local para determinar el método de cálculo para este ticker
+          local_calculation_method = calculation_method
+
           # Get valid data ranges for both stocks
           main_valid = adj_close[main_stock].notna()
           stock_valid = adj_close[stock].notna()
@@ -141,7 +152,8 @@ if st.button('Obtener Datos y Graficar'):
           # Only keep dates where both stocks have valid data
           valid_dates = main_valid & stock_valid
 
-          if local_calculation_method == 'Precio * Volumen Ratio':
+          # Check if volume data is available for the main stock and the current stock
+          if calculation_method == 'Precio * Volumen Ratio':
               if (main_stock not in volume.columns) or (stock not in volume.columns):
                   st.warning(f"No se encontraron datos de 'Volume' para '{stock}' o '{main_stock}'. Usando 'Precio Ratio' para este ticker.")
                   local_calculation_method = 'Precio Ratio'
@@ -161,43 +173,39 @@ if st.button('Obtener Datos y Graficar'):
           else:
               ratio = adj_close[main_stock][valid_dates] / adj_close[stock][valid_dates]
 
-          # Continue with the rest of your plotting code...
-            # Manejar posibles NaNs resultantes del cálculo
-            ratio = ratio.fillna(method='ffill').fillna(method='bfill')
-
           if view_as_percentages:
-                # Asegurar que reference_date esté en el índice
-                if reference_date not in ratio.index:
-                    differences = abs(ratio.index - reference_date)
-                    closest_date = ratio.index[differences.argmin()]
-                    reference_date_adj = closest_date
-                    st.warning(
-                        f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date_adj.date()}")
-                else:
-                    reference_date_adj = reference_date
+              # Asegurar que reference_date esté en el índice
+              if reference_date not in ratio.index:
+                  differences = abs(ratio.index - reference_date)
+                  closest_date = ratio.index[differences.argmin()]
+                  reference_date_adj = closest_date
+                  st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date_adj.date()}")
+              else:
+                  reference_date_adj = reference_date
 
-                reference_value = ratio.loc[reference_date_adj]
-                ratio = (ratio / reference_value - 1) * 100
-                name_suffix = f"({reference_value:.2f})"
+              reference_value = ratio.loc[reference_date_adj]
+              ratio = (ratio / reference_value - 1) * 100
+              name_suffix = f"({reference_value:.2f})"
 
-                # Add vertical reference line
-                fig.add_shape(
-                    type="line",
-                    x0=reference_date_adj, y0=ratio.min(), x1=reference_date_adj, y1=ratio.max(),
-                    line=dict(color="yellow", dash="dash"),
-                    xref="x", yref="y"
-                )
+              # Add vertical reference line
+              fig.add_shape(
+                  type="line",
+                  x0=reference_date_adj, y0=ratio.min(), x1=reference_date_adj, y1=ratio.max(),
+                  line=dict(color="yellow", dash="dash"),
+                  xref="x", yref="y"
+              )
 
-                # Add a thin red line across zero in the Y-axis
-                fig.add_shape(
-                    type="line",
-                    x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
-                    line=dict(color="red", width=1),
-                    xref="x", yref="y"
-                )
-            else:
-                name_suffix = ""
+              # Add a thin red line across zero in the Y-axis
+              fig.add_shape(
+                  type="line",
+                  x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
+                  line=dict(color="red", width=1),
+                  xref="x", yref="y"
+              )
+          else:
+              name_suffix = ""
 
+          # Continue with the rest of your plotting code...
             # Verificar si hay suficientes datos para calcular la SMA
             if len(ratio) < sma_period:
                 st.warning(
