@@ -163,9 +163,9 @@ if st.button('Obtener Datos y Graficar'):
 
           # Continue with the rest of your plotting code...
             # Manejar posibles NaNs resultantes del cálculo
-        ratio = ratio.fillna(method='ffill').fillna(method='bfill')
+            ratio = ratio.fillna(method='ffill').fillna(method='bfill')
 
-            if view_as_percentages:
+          if view_as_percentages:
                 # Asegurar que reference_date esté en el índice
                 if reference_date not in ratio.index:
                     differences = abs(ratio.index - reference_date)
