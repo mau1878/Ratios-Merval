@@ -85,88 +85,83 @@ with st.sidebar:
         use_log_scale = st.checkbox('Usar escala logarítmica para el eje Y', value=False)
 
 # Fetch and process data
+# Replace the data processing section with this:
+
+# Fetch and process data
 if st.button('Obtener Datos y Graficar'):
-    try:
-        # Combinar el main_stock y extra_stocks para descargar todos juntos
-        all_tickers = list(set([main_stock] + extra_stocks))  # Eliminar duplicados
+  try:
+      # Combinar el main_stock y extra_stocks para descargar todos juntos
+      all_tickers = list(set([main_stock] + extra_stocks))  # Eliminar duplicados
 
-        # Fetch data
-        data = yf.download(all_tickers, start=start_date, end=end_date, group_by='ticker', auto_adjust=False)
+      # Fetch data
+      data = yf.download(all_tickers, start=start_date, end=end_date, group_by='ticker', auto_adjust=False)
 
-        # Initialize empty DataFrames for adj_close and volume
-        adj_close = pd.DataFrame()
-        volume = pd.DataFrame()
+      # Initialize empty DataFrames for adj_close and volume
+      adj_close = pd.DataFrame()
+      volume = pd.DataFrame()
 
-        # Handle different data structures based on number of tickers
-        if len(all_tickers) == 1:
-            # Single ticker case - data is not multi-index
-            ticker = all_tickers[0]
-            adj_close[ticker] = data['Adj Close']
-            volume[ticker] = data['Volume']
-        else:
-            # Multiple tickers case - data is multi-index
-            for ticker in all_tickers:
-                try:
-                    # Extract 'Adj Close' and 'Volume' for each ticker
-                    adj_close[ticker] = data[ticker]['Adj Close']
-                    volume[ticker] = data[ticker]['Volume']
-                except KeyError as e:
-                    st.warning(f"No se pudieron obtener datos para {ticker}: {e}")
-                    continue
+      # Handle different data structures based on number of tickers
+      if len(all_tickers) == 1:
+          ticker = all_tickers[0]
+          adj_close[ticker] = data['Adj Close']
+          volume[ticker] = data['Volume']
+      else:
+          for ticker in all_tickers:
+              try:
+                  adj_close[ticker] = data[ticker]['Adj Close']
+                  volume[ticker] = data[ticker]['Volume']
+              except KeyError as e:
+                  st.warning(f"No se pudieron obtener datos para {ticker}: {e}")
+                  continue
 
-        # Verify we have data
-        if adj_close.empty or volume.empty:
-            st.error("No se pudieron obtener datos válidos para los tickers seleccionados.")
-            st.stop()
+      # Verify we have data
+      if adj_close.empty or volume.empty:
+          st.error("No se pudieron obtener datos válidos para los tickers seleccionados.")
+          st.stop()
 
-        # Remove timezone information if present
-        adj_close.index = adj_close.index.tz_localize(None)
-        volume.index = volume.index.tz_localize(None)
+      # Remove timezone information if present
+      adj_close.index = adj_close.index.tz_localize(None)
+      volume.index = volume.index.tz_localize(None)
 
-        # Handle missing data
-        adj_close = adj_close.fillna(method='ffill').fillna(method='bfill')
-        volume = volume.fillna(method='ffill').fillna(method='bfill')
+      # Instead of filling NaN values, we'll handle them during ratio calculation
 
-        # Debug information
-        st.write("Estructura de Adj Close:", adj_close.head())
-        st.write("Estructura de Volume:", volume.head())
+      # Plot setup
+      fig = go.Figure()
+      colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'brown']
 
-        # Check if main stock exists in data
-        if main_stock not in adj_close.columns:
-            st.error(f"No se encontró el ticker principal '{main_stock}' en los datos.")
-            st.stop()
+      for idx, stock in enumerate(extra_stocks):
+          if stock not in adj_close.columns:
+              st.warning(f"No se encontró el ticker '{stock}' en los datos de 'Adj Close'.")
+              continue
 
-        # Plot setup
-        fig = go.Figure()
-        # Define una lista de colores para las SMAs
-        colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'brown']
+          # Get valid data ranges for both stocks
+          main_valid = adj_close[main_stock].notna()
+          stock_valid = adj_close[stock].notna()
 
-        for idx, stock in enumerate(extra_stocks):
-            if stock not in adj_close.columns:
-                st.warning(f"No se encontró el ticker '{stock}' en los datos de 'Adj Close'.")
-                continue
+          # Only keep dates where both stocks have valid data
+          valid_dates = main_valid & stock_valid
 
-            # Variable local para determinar el método de cálculo para este ticker
-            local_calculation_method = calculation_method
+          if local_calculation_method == 'Precio * Volumen Ratio':
+              if (main_stock not in volume.columns) or (stock not in volume.columns):
+                  st.warning(f"No se encontraron datos de 'Volume' para '{stock}' o '{main_stock}'. Usando 'Precio Ratio' para este ticker.")
+                  local_calculation_method = 'Precio Ratio'
+              else:
+                  # Also consider volume data validity
+                  volume_main_valid = volume[main_stock].notna()
+                  volume_stock_valid = volume[stock].notna()
+                  valid_dates = valid_dates & volume_main_valid & volume_stock_valid
 
-            # Check if volume data is available for the main stock and the current stock
-            if calculation_method == 'Precio * Volumen Ratio':
-                if (main_stock not in volume.columns) or (stock not in volume.columns):
-                    st.warning(
-                        f"No se encontraron datos de 'Volume' para '{stock}' o '{main_stock}'. Usando 'Precio Ratio' para este ticker.")
-                    local_calculation_method = 'Precio Ratio'  # Fallback solo para este ticker
+          # Calculate ratio only for valid dates
+          if local_calculation_method == 'Precio * Volumen Ratio':
+              price_main = adj_close[main_stock][valid_dates]
+              price_stock = adj_close[stock][valid_dates]
+              volume_main = volume[main_stock][valid_dates]
+              volume_stock = volume[stock][valid_dates]
+              ratio = (price_main * volume_main) / (price_stock * volume_stock)
+          else:
+              ratio = adj_close[main_stock][valid_dates] / adj_close[stock][valid_dates]
 
-            # Calcula el ratio basado en el método seleccionado localmente
-            if local_calculation_method == 'Precio * Volumen Ratio':
-                price_main = adj_close[main_stock]
-                price_stock = adj_close[stock]
-                volume_main = volume[main_stock]
-                volume_stock = volume[stock]
-
-                ratio = (price_main * volume_main) / (price_stock * volume_stock)
-            else:  # Default to 'Precio Ratio'
-                ratio = adj_close[main_stock] / adj_close[stock]
-
+          # Continue with the rest of your plotting code...
             # Manejar posibles NaNs resultantes del cálculo
             ratio = ratio.fillna(method='ffill').fillna(method='bfill')
 
