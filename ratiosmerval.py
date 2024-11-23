@@ -164,72 +164,71 @@ if st.button('Obtener Datos y Graficar'):
                   valid_dates = valid_dates & volume_main_valid & volume_stock_valid
 
           # Calculate ratio only for valid dates
-          if local_calculation_method == 'Precio * Volumen Ratio':
-              price_main = adj_close[main_stock][valid_dates]
-              price_stock = adj_close[stock][valid_dates]
-              volume_main = volume[main_stock][valid_dates]
-              volume_stock = volume[stock][valid_dates]
-              ratio = (price_main * volume_main) / (price_stock * volume_stock)
-          else:
-              ratio = adj_close[main_stock][valid_dates] / adj_close[stock][valid_dates]
-
-          if view_as_percentages:
-              # Asegurar que reference_date esté en el índice
-              if reference_date not in ratio.index:
-                  differences = abs(ratio.index - reference_date)
-                  closest_date = ratio.index[differences.argmin()]
-                  reference_date_adj = closest_date
-                  st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date_adj.date()}")
-              else:
-                  reference_date_adj = reference_date
-
-              reference_value = ratio.loc[reference_date_adj]
-              ratio = (ratio / reference_value - 1) * 100
-              name_suffix = f"({reference_value:.2f})"
-
-              # Add vertical reference line
-              fig.add_shape(
-                  type="line",
-                  x0=reference_date_adj, y0=ratio.min(), x1=reference_date_adj, y1=ratio.max(),
-                  line=dict(color="yellow", dash="dash"),
-                  xref="x", yref="y"
-              )
-
-              # Add a thin red line across zero in the Y-axis
-              fig.add_shape(
-                  type="line",
-                  x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
-                  line=dict(color="red", width=1),
-                  xref="x", yref="y"
-              )
-          else:
-              name_suffix = ""
-
-          # Continue with the rest of your plotting code...
-            # Verificar si hay suficientes datos para calcular la SMA
-        if len(ratio) < sma_period:
-            st.warning(
-                f"No hay suficientes datos para calcular la SMA de {sma_period} días para el ticker '{stock}'.")
-            sma = pd.Series([np.nan] * len(ratio), index=ratio.index)
+          # Calculate ratio only for valid dates
+        if local_calculation_method == 'Precio * Volumen Ratio':
+          price_main = adj_close[main_stock][valid_dates]
+          price_stock = adj_close[stock][valid_dates]
+          volume_main = volume[main_stock][valid_dates]
+          volume_stock = volume[stock][valid_dates]
+          ratio = (price_main * volume_main) / (price_stock * volume_stock)
         else:
-            # Calculate SMA
-            sma = ratio.rolling(window=sma_period).mean()
-
+          ratio = adj_close[main_stock][valid_dates] / adj_close[stock][valid_dates]
+        
+        if view_as_percentages:
+          # Asegurar que reference_date esté en el índice
+          if reference_date not in ratio.index:
+              differences = abs(ratio.index - reference_date)
+              closest_date = ratio.index[differences.argmin()]
+              reference_date_adj = closest_date
+              st.warning(f"La fecha de referencia ha sido ajustada a la fecha más cercana disponible: {reference_date_adj.date()}")
+          else:
+              reference_date_adj = reference_date
+        
+          reference_value = ratio.loc[reference_date_adj]
+          ratio = (ratio / reference_value - 1) * 100
+          name_suffix = f"({reference_value:.2f})"
+        
+          # Add vertical reference line
+          fig.add_shape(
+              type="line",
+              x0=reference_date_adj, y0=ratio.min(), x1=reference_date_adj, y1=ratio.max(),
+              line=dict(color="yellow", dash="dash"),
+              xref="x", yref="y"
+          )
+        
+          # Add a thin red line across zero in the Y-axis
+          fig.add_shape(
+              type="line",
+              x0=ratio.index.min(), y0=0, x1=ratio.index.max(), y1=0,
+              line=dict(color="red", width=1),
+              xref="x", yref="y"
+          )
+        else:
+          name_suffix = ""
+        
+        # Verificar si hay suficientes datos para calcular la SMA
+        if len(ratio) < sma_period:
+          st.warning(f"No hay suficientes datos para calcular la SMA de {sma_period} días para el ticker '{stock}'.")
+          sma = pd.Series([np.nan] * len(ratio), index=ratio.index)
+        else:
+          # Calculate SMA
+          sma = ratio.rolling(window=sma_period).mean()
+        
         # Agregar el ratio al gráfico principal
         fig.add_trace(go.Scatter(
-            x=ratio.index,
-            y=ratio,
-            mode='lines',
-            name=f'{main_stock} / {stock} {name_suffix}'
+          x=ratio.index,
+          y=ratio,
+          mode='lines',
+          name=f'{main_stock} / {stock} {name_suffix}'
         ))
-
+        
         # Agregar la SMA al gráfico principal con color único
         fig.add_trace(go.Scatter(
-            x=sma.index,
-            y=sma,
-            mode='lines',
-            name=f'SMA {sma_period} {main_stock} / {stock}',
-            line=dict(color=colors[idx % len(colors)], dash='dot')
+          x=sma.index,
+          y=sma,
+          mode='lines',
+          name=f'SMA {sma_period} {main_stock} / {stock}',
+          line=dict(color=colors[idx % len(colors)], dash='dot')
         ))
 
         # Si se selecciona solo un ticker adicional, mostrar SMA y histograma
