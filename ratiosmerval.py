@@ -517,15 +517,15 @@ if st.button('Obtener Datos y Graficar'):
           # Add filled area between standard deviation bands
           if show_filled_area:
     # Add filled area between standard deviation bands  
-          fig.add_trace(go.Scatter(  
-              x=upper_band.index.tolist() + lower_band.index.tolist()[::-1],
-              y=upper_band.values.tolist() + lower_band.values.tolist()[::-1],
-              fill='toself',
-              fillcolor=rgba_colors[idx % len(rgba_colors)],
-              line=dict(width=0),
-              showlegend=False,
-              name=f'2σ Band {main_stock}/{stock}'
-          ))
+              fig.add_trace(go.Scatter(  
+                  x=upper_band.index.tolist() + lower_band.index.tolist()[::-1],
+                  y=upper_band.values.tolist() + lower_band.values.tolist()[::-1],
+                  fill='toself',
+                  fillcolor=rgba_colors[idx % len(rgba_colors)],
+                  line=dict(width=0),
+                  showlegend=False,
+                  name=f'2σ Band {main_stock}/{stock}'
+              ))
 
           # Add mean line
           fig.add_trace(go.Scatter(
