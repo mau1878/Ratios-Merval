@@ -51,7 +51,7 @@ with st.sidebar:
       options=extra_stocks_options,
       default=extra_stocks_manual[:6]
   )
-
+  show_filled_area = st.checkbox('Mostrar área coloreada entre líneas de desviación estándar', value=True)  
   max_start_date = pd.to_datetime("2024-09-30")
   start_date = st.date_input("Fecha de inicio", pd.to_datetime("1980-01-01"), max_value=max_start_date)
   end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"), min_value=start_date)
@@ -515,15 +515,17 @@ if st.button('Obtener Datos y Graficar'):
           ))
 
           # Add filled area between standard deviation bands
-          fig.add_trace(go.Scatter(
-              x=upper_band.index.tolist() + lower_band.index.tolist()[::-1],
-              y=upper_band.values.tolist() + lower_band.values.tolist()[::-1],
-              fill='toself',
-              fillcolor=rgba_colors[idx % len(rgba_colors)],
-              line=dict(width=0),
-              showlegend=False,
-              name=f'2σ Band {main_stock}/{stock}'
-          ))
+          if show_filled_area:  
+    # Add filled area between standard deviation bands  
+              fig.add_trace(go.Scatter(  
+                  x=upper_band.index.tolist() + lower_band.index.tolist()[::-1],  
+                  y=upper_band.values.tolist() + lower_band.values.tolist()[::-1],  
+                  fill='toself',  
+                  fillcolor=rgba_colors[idx % len(rgba_colors)],  
+                  line=dict(width=0),  
+                  showlegend=False,  
+                  name=f'2σ Band {main_stock}/{stock}'  
+              ))  
 
           # Add mean line
           fig.add_trace(go.Scatter(
