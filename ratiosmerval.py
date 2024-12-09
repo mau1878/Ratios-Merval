@@ -51,7 +51,7 @@ with st.sidebar:
       options=extra_stocks_options,
       default=extra_stocks_manual[:6]
   )
-  show_filled_area = st.checkbox('Mostrar área coloreada entre líneas de desviación estándar', value=True)  
+  show_filled_area = st.checkbox('Mostrar área coloreada entre líneas de desviación estándar', value=True)
   max_start_date = pd.to_datetime("2024-09-30")
   start_date = st.date_input("Fecha de inicio", pd.to_datetime("1980-01-01"), max_value=max_start_date)
   end_date = st.date_input("Fecha de finalización", pd.to_datetime("today"), min_value=start_date)
