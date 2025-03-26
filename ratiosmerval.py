@@ -409,14 +409,12 @@ if st.button('Obtener Datos y Graficar'):
       colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan']
 
       # Process each comparison stock
-      # After calculating the ratio for each stock comparison
       for idx, stock in enumerate(extra_stocks):
           if stock not in adj_close.columns:
               continue
 
-          # Calculate ratio (your existing code)
+          # Calculate ratio
           valid_mask = (adj_close[main_stock].notna() & adj_close[stock].notna())
-
           if calculation_method == 'Precio * Volumen Ratio':
               if stock in volume.columns and main_stock in volume.columns:
                   valid_mask = valid_mask & volume[main_stock].notna() & volume[stock].notna()
@@ -431,10 +429,9 @@ if st.button('Obtener Datos y Graficar'):
           ratio_mean = ratio.mean()
           ratio_std = ratio.std()
 
-          # Convert to percentage if needed (your existing code)
           # Calculate rolling statistics
-          rolling_mean = ratio.rolling(window=20).mean()  # 20-day rolling mean
-          rolling_std = ratio.rolling(window=20).std()  # 20-day rolling std
+          rolling_mean = ratio.rolling(window=20).mean()
+          rolling_std = ratio.rolling(window=20).std()
           upper_band = rolling_mean + (2 * rolling_std)
           lower_band = rolling_mean - (2 * rolling_std)
           upper_band_mean = ratio_mean + (2 * ratio_std)
@@ -448,123 +445,73 @@ if st.button('Obtener Datos y Graficar'):
               rolling_mean = (rolling_mean / reference_value - 1) * 100
               upper_band = (upper_band / reference_value - 1) * 100
               lower_band = (lower_band / reference_value - 1) * 100
-              upper_band_mean = (upper_band / reference_value - 1) * 100
-              lower_band_mean = (lower_band / reference_value - 1) * 100
+              upper_band_mean = (upper_band_mean / reference_value - 1) * 100
+              lower_band_mean = (lower_band_mean / reference_value - 1) * 100
               name_suffix = f"({reference_value:.2f})"
           else:
               name_suffix = ""
 
           # Define rgba colors for the bands
           rgba_colors = [
-              'rgba(255, 165, 0, 0.1)',  # orange
-              'rgba(0, 0, 255, 0.1)',  # blue
-              'rgba(0, 255, 0, 0.1)',  # green
-              'rgba(255, 0, 0, 0.1)',  # red
-              'rgba(128, 0, 128, 0.1)',  # purple
-              'rgba(0, 255, 255, 0.1)'  # cyan
+              'rgba(255, 165, 0, 0.1)', 'rgba(0, 0, 255, 0.1)', 'rgba(0, 255, 0, 0.1)',
+              'rgba(255, 0, 0, 0.1)', 'rgba(128, 0, 128, 0.1)', 'rgba(0, 255, 255, 0.1)'
           ]
 
-          # Add main ratio trace
+          # Add traces (main ratio, rolling mean, bands, etc.)
           fig.add_trace(go.Scatter(
-              x=ratio.index,
-              y=ratio.values,
-              mode='lines',
+              x=ratio.index, y=ratio.values, mode='lines',
               name=f'{main_stock}/{stock} {name_suffix}',
               line=dict(color=colors[idx % len(colors)])
           ))
 
-          # Add rolling mean line
           fig.add_trace(go.Scatter(
-              x=rolling_mean.index,
-              y=rolling_mean.values,
-              mode='lines',
+              x=rolling_mean.index, y=rolling_mean.values, mode='lines',
               name=f'MA(20) {main_stock}/{stock}',
-              line=dict(
-                  color=colors[idx % len(colors)],
-                  dash='dash',
-                  width=1
-              ),
+              line=dict(color=colors[idx % len(colors)], dash='dash', width=1),
               opacity=0.7
           ))
 
-          # Add upper and lower standard deviation bands
           fig.add_trace(go.Scatter(
-              x=upper_band.index,
-              y=upper_band.values,
-              mode='lines',
+              x=upper_band.index, y=upper_band.values, mode='lines',
               name=f'+2σ {main_stock}/{stock}',
-              line=dict(
-                  color=colors[idx % len(colors)],
-                  dash='dot',
-                  width=1
-              ),
+              line=dict(color=colors[idx % len(colors)], dash='dot', width=1),
               opacity=0.5
           ))
 
           fig.add_trace(go.Scatter(
-              x=lower_band.index,
-              y=lower_band.values,
-              mode='lines',
+              x=lower_band.index, y=lower_band.values, mode='lines',
               name=f'-2σ {main_stock}/{stock}',
-              line=dict(
-                  color=colors[idx % len(colors)],
-                  dash='dot',
-                  width=1
-              ),
+              line=dict(color=colors[idx % len(colors)], dash='dot', width=1),
               opacity=0.5
           ))
 
-          # Add filled area between standard deviation bands
           if show_filled_area:
-    # Add filled area between standard deviation bands  
-              fig.add_trace(go.Scatter(  
+              fig.add_trace(go.Scatter(
                   x=upper_band.index.tolist() + lower_band.index.tolist()[::-1],
                   y=upper_band.values.tolist() + lower_band.values.tolist()[::-1],
-                  fill='toself',
-                  fillcolor=rgba_colors[idx % len(rgba_colors)],
-                  line=dict(width=0),
-                  showlegend=False,
+                  fill='toself', fillcolor=rgba_colors[idx % len(rgba_colors)],
+                  line=dict(width=0), showlegend=False,
                   name=f'2σ Band {main_stock}/{stock}'
               ))
 
-          # Add mean line
           fig.add_trace(go.Scatter(
-              x=[ratio.index[0], ratio.index[-1]],  # Start and end of the time period
-              y=[ratio_mean, ratio_mean],
-              mode='lines',
-              name=f'Mean {main_stock}/{stock}',
-              line=dict(
-                  color=colors[idx % len(colors)],
-                  dash='dash',  # Makes the line dashed
-                  width=1
-              ),
+              x=[ratio.index[0], ratio.index[-1]], y=[ratio_mean, ratio_mean],
+              mode='lines', name=f'Mean {main_stock}/{stock}',
+              line=dict(color=colors[idx % len(colors)], dash='dash', width=1),
               opacity=0.7
           ))
 
-          # Add upper and lower standard deviation bands
           fig.add_trace(go.Scatter(
-              x=[ratio.index[0], ratio.index[-1]],
-              y=[upper_band_mean, upper_band_mean],
-              mode='lines',
-              name=f'+2σ {main_stock}/{stock}',
-              line=dict(
-                  color=colors[idx % len(colors)],
-                  dash='dot',
-                  width=1
-              ),
+              x=[ratio.index[0], ratio.index[-1]], y=[upper_band_mean, upper_band_mean],
+              mode='lines', name=f'+2σ {main_stock}/{stock}',
+              line=dict(color=colors[idx % len(colors)], dash='dot', width=1),
               opacity=0.5
           ))
 
           fig.add_trace(go.Scatter(
-              x=[ratio.index[0], ratio.index[-1]],
-              y=[lower_band_mean, lower_band_mean],
-              mode='lines',
-              name=f'-2σ {main_stock}/{stock}',
-              line=dict(
-                  color=colors[idx % len(colors)],
-                  dash='dot',
-                  width=1
-              ),
+              x=[ratio.index[0], ratio.index[-1]], y=[lower_band_mean, lower_band_mean],
+              mode='lines', name=f'-2σ {main_stock}/{stock}',
+              line=dict(color=colors[idx % len(colors)], dash='dot', width=1),
               opacity=0.5
           ))
 
@@ -574,117 +521,62 @@ if st.button('Obtener Datos y Graficar'):
           else:
               sma = pd.Series(index=ratio.index, dtype=float)
 
-
-          # Add SMA trace
           if not sma.empty:
               fig.add_trace(go.Scatter(
-                  x=sma.index,
-                  y=sma.values,
-                  mode='lines',
+                  x=sma.index, y=sma.values, mode='lines',
                   name=f'SMA {sma_period} {main_stock}/{stock}',
                   line=dict(color=colors[idx % len(colors)], dash='dot')
               ))
 
           # Add individual price series
-          # Get CCL ratio if needed
           ccl_ratio = None
           if normalize_by_ccl:
               ccl_ratio = get_ccl_ratio(data_source, start_date, end_date)
               if ccl_ratio is None:
                   st.warning("Usando precios sin normalizar por CCL")
 
-          # Add individual price series
           for ticker in [main_stock, stock]:
               prices = adj_close[ticker]
-              # And in the main plotting section, when applying CCL normalization:
               if normalize_by_ccl and ccl_ratio is not None:
-                  # Make sure the price index is timezone-naive
                   if prices.index.tz is not None:
                       prices.index = prices.index.tz_localize(None)
                   if ccl_ratio.index.tz is not None:
                       ccl_ratio.index = ccl_ratio.index.tz_localize(None)
-
-                  # Create a complete date range
                   full_index = pd.date_range(start=min(prices.index.min(), ccl_ratio.index.min()),
-                                             end=max(prices.index.max(), ccl_ratio.index.max()),
-                                             freq='D')
-
-                  # Reindex and forward fill both series
+                                           end=max(prices.index.max(), ccl_ratio.index.max()), freq='D')
                   prices_filled = prices.reindex(full_index).ffill()
                   ccl_ratio_filled = ccl_ratio.reindex(full_index).ffill()
-
-                  # Calculate normalized prices
                   normalized_prices = prices_filled / ccl_ratio_filled
-
                   fig.add_trace(go.Scatter(
-                      x=normalized_prices.index,
-                      y=normalized_prices,
-                      mode='lines',
-                      name=f'{ticker} Price (CCL adj)',
-                      opacity=0.3,
-                      yaxis='y2'
+                      x=normalized_prices.index, y=normalized_prices, mode='lines',
+                      name=f'{ticker} Price (CCL adj)', opacity=0.3, yaxis='y2'
                   ))
               else:
                   fig.add_trace(go.Scatter(
-                      x=prices.index,
-                      y=prices,
-                      mode='lines',
-                      name=f'{ticker} Price',
-                      opacity=0.3,
-                      yaxis='y2'
+                      x=prices.index, y=prices, mode='lines',
+                      name=f'{ticker} Price', opacity=0.3, yaxis='y2'
                   ))
 
-
-
-      # Update layout
-      # Update layout
-      # Update layout
-      # Update layout
-      # Update layout
       # Update layout
       fig.update_layout(
           title='Ratios de Activos',
           xaxis_title='Fecha',
           yaxis_title='Ratio' if not view_as_percentages else 'Porcentaje',
           xaxis_rangeslider_visible=False,
-          yaxis=dict(
-              showgrid=True,
-              type='linear'
-          ),
+          yaxis=dict(showgrid=True, type='linear'),
           yaxis2=dict(
               title='Precio' + (' (Ajustado por CCL)' if normalize_by_ccl else ''),
-              overlaying='y',
-              side='right',
-              showgrid=False,
-              type='log' if use_log_scale else 'linear',
-              tickformat='.2f'
+              overlaying='y', side='right', showgrid=False,
+              type='log' if use_log_scale else 'linear', tickformat='.2f'
           ),
           showlegend=True,
-          legend=dict(
-              orientation="h",
-              yanchor="bottom",
-              y=1.02,
-              xanchor="right",
-              x=1
-          )
+          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
       )
 
       # Add watermark
-      fig.add_annotation(
-          text="MTaurus - X: @MTaurus_ok",
-          xref="paper", yref="paper",
-          x=0.5, y=0.5,
-          showarrow=False,
-          font=dict(size=30, color="rgba(150,150,150,0.3)"),
-          textangle=-30,
-          opacity=0.3
-      )
+      add_watermark(fig)
 
-      # Display the figure
-      st.plotly_chart(fig, use_container_width=True)
-  # After the st.plotly_chart(fig, use_container_width=True) line, add this:
-
-      # Display the figure
+      # Display the figure ONCE
       st.plotly_chart(fig, use_container_width=True)
 
       # Add simple explanation for laypeople in Spanish
@@ -742,4 +634,4 @@ if st.button('Obtener Datos y Graficar'):
 
   except Exception as e:
       st.error(f"Se produjo un error: {str(e)}")
-      st.write("Detalles del error:", e.__class__.__name__)  
+      st.write("Detalles del error:", e.__class__.__name__)
