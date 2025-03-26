@@ -682,7 +682,64 @@ if st.button('Obtener Datos y Graficar'):
 
       # Display the figure
       st.plotly_chart(fig, use_container_width=True)
+  # After the st.plotly_chart(fig, use_container_width=True) line, add this:
+
+      # Display the figure
+      st.plotly_chart(fig, use_container_width=True)
+
+      # Add simple explanation for laypeople in Spanish
+      st.subheader("Explicación Simple del Gráfico")
+      for idx, stock in enumerate(extra_stocks):
+          if stock not in adj_close.columns:
+              continue
+
+          # Calculate ratio (same as in plotting)
+          valid_mask = (adj_close[main_stock].notna() & adj_close[stock].notna())
+          if calculation_method == 'Precio * Volumen Ratio':
+              if stock in volume.columns and main_stock in volume.columns:
+                  valid_mask = valid_mask & volume[main_stock].notna() & volume[stock].notna()
+                  ratio = (adj_close[main_stock][valid_mask] * volume[main_stock][valid_mask]) / \
+                          (adj_close[stock][valid_mask] * volume[stock][valid_mask])
+              else:
+                  ratio = adj_close[main_stock][valid_mask] / adj_close[stock][valid_mask]
+          else:
+              ratio = adj_close[main_stock][valid_mask] / adj_close[stock][valid_mask]
+
+          # Get latest ratio value and statistical measures
+          latest_ratio = ratio.iloc[-1]
+          ratio_mean = ratio.mean()
+          ratio_std = ratio.std()
+          upper_band_mean = ratio_mean + (2 * ratio_std)
+          lower_band_mean = ratio_mean - (2 * ratio_std)
+
+          # Convert to percentage if view_as_percentages is selected
+          if view_as_percentages:
+              reference_idx = ratio.index[ratio.index.get_indexer([reference_date], method='nearest')[0]]
+              reference_value = ratio[reference_idx]
+              latest_ratio = (latest_ratio / reference_value - 1) * 100
+              ratio_mean = (ratio_mean / reference_value - 1) * 100
+              upper_band_mean = (upper_band_mean / reference_value - 1) * 100
+              lower_band_mean = (lower_band_mean / reference_value - 1) * 100
+              unit = "%"
+          else:
+              unit = ""
+
+          # Simple explanation logic
+          explanation = f"**{main_stock} vs {stock}:**\n"
+          explanation += f"Este gráfico muestra cómo se comparan los precios de {main_stock} y {stock} con el tiempo. El número actual es {latest_ratio:.2f}{unit}.\n"
+
+          if latest_ratio > upper_band_mean:
+              explanation += f"Esto significa que ahora {main_stock} está mucho más caro en comparación con {stock} de lo que suele estar. Podría ser un buen momento para vender {main_stock} y comprar {stock}, porque {stock} está más barato relativamente.\n"
+          elif latest_ratio < lower_band_mean:
+              explanation += f"Esto significa que ahora {main_stock} está mucho más barato en comparación con {stock} de lo normal. Podría ser un buen momento para comprar {main_stock} y vender {stock}, porque {main_stock} está en oferta relativamente.\n"
+          else:
+              explanation += f"El precio de {main_stock} comparado con {stock} está cerca de lo normal. No hay una señal clara de que uno sea mucho mejor para comprar o vender que el otro en este momento.\n"
+
+          explanation += "Recuerda: esto es solo una guía simple basada en el pasado. ¡Los precios pueden cambiar por muchas razones!"
+
+          # Display the explanation
+          st.write(explanation)
 
   except Exception as e:
       st.error(f"Se produjo un error: {str(e)}")
-      st.write("Detalles del error:", e.__class__.__name__)
+      st.write("Detalles del error:", e.__class__.__name__)  
