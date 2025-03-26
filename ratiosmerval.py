@@ -576,11 +576,10 @@ if st.button('Obtener Datos y Graficar'):
       # Add watermark
       add_watermark(fig)
 
-      # Display the figure ONCE
+      # Display the figure
       st.plotly_chart(fig, use_container_width=True)
 
-      # Add simple explanation for laypeople in Spanish
-      st.subheader("Explicación Simple del Gráfico")
+      # Add simple explanation for laypeople in Argentine Spanish with smaller font
       for idx, stock in enumerate(extra_stocks):
           if stock not in adj_close.columns:
               continue
@@ -616,21 +615,21 @@ if st.button('Obtener Datos y Graficar'):
           else:
               unit = ""
 
-          # Simple explanation logic
-          explanation = f"**{main_stock} vs {stock}:**\n"
-          explanation += f"Este gráfico muestra cómo se comparan los precios de {main_stock} y {stock} con el tiempo. El número actual es {latest_ratio:.2f}{unit}.\n"
+          # Simple explanation logic in Argentine Spanish
+          explanation = f"**{main_stock} vs {stock}:**<br>"
+          explanation += f"Este gráfico te muestra cómo se comparan los precios de {main_stock} y {stock} a lo largo del tiempo. El número actual es {latest_ratio:.2f}{unit}.<br>"
 
           if latest_ratio > upper_band_mean:
-              explanation += f"Esto significa que ahora {main_stock} está mucho más caro en comparación con {stock} de lo que suele estar. Podría ser un buen momento para vender {main_stock} y comprar {stock}, porque {stock} está más barato relativamente.\n"
+              explanation += f"Esto quiere decir que ahora {main_stock} está mucho más caro comparado con {stock} de lo que es habitual. Capaz sea un buen momento para vender {main_stock} y comprar {stock}, ya que {stock} está más barato relativamente.<br>"
           elif latest_ratio < lower_band_mean:
-              explanation += f"Esto significa que ahora {main_stock} está mucho más barato en comparación con {stock} de lo normal. Podría ser un buen momento para comprar {main_stock} y vender {stock}, porque {main_stock} está en oferta relativamente.\n"
+              explanation += f"Esto indica que ahora {main_stock} está mucho más barato comparado con {stock} de lo normal. Podría ser una buena chance para comprar {main_stock} y vender {stock}, porque {main_stock} está como en oferta relativamente.<br>"
           else:
-              explanation += f"El precio de {main_stock} comparado con {stock} está cerca de lo normal. No hay una señal clara de que uno sea mucho mejor para comprar o vender que el otro en este momento.\n"
+              explanation += f"El precio de {main_stock} comparado con {stock} está más o menos en lo normal. No hay una señal clara de que uno sea mucho mejor para comprar o vender que el otro ahora.<br>"
 
-          explanation += "Recuerda: esto es solo una guía simple basada en el pasado. ¡Los precios pueden cambiar por muchas razones!"
+          explanation += "¡Ojo! Esto es solo una guía simple basada en lo que pasó antes. Los precios pueden cambiar por un montón de razones, así que pensá bien antes de decidir."
 
-          # Display the explanation
-          st.write(explanation)
+          # Display the explanation with smaller font using Markdown
+          st.markdown(f'<div style="font-size: 12px">{explanation}</div>', unsafe_allow_html=True)
 
   except Exception as e:
       st.error(f"Se produjo un error: {str(e)}")
